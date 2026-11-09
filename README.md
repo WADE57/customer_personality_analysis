@@ -35,7 +35,8 @@ python src/03_eda.py
 ```
 
 Le script EDA lit `data/processed/marketing_campaign_clean.csv`, enregistre
-les graphiques dans `figures/eda/` et génère la synthèse statistique
+une sélection de dix figures utiles à la segmentation et à la modélisation
+dans `figures/eda/`, puis génère la synthèse statistique
 `reports/eda/eda_summary.md`. Il exporte également les statistiques
 descriptives, valeurs manquantes, corrélations, campagnes et distributions
 catégorielles au format CSV dans `reports/eda/`. Les fichiers de données
