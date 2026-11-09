@@ -14,15 +14,32 @@ Projet portfolio de Data Science : analyse du comportement client, segmentation 
 ## Structure
 - `data/raw/` : fichiers originaux, non modifiés (non suivis par Git).
 - `data/processed/` : données préparées (non suivies par Git).
-- `notebooks/` : analyses exploratoires.
+- `src/` : scripts Python d'inspection, de nettoyage et d'analyse.
+- `figures/eda/` : graphiques de l'analyse exploratoire.
+- `reports/eda/` : synthèses et rapports de l'analyse exploratoire.
+- `notebooks/` : analyses exploratoires complémentaires.
 - `R/` : scripts R.
-- `src/` : scripts Python.
-- `reports/figures/` : graphiques exportés.
-- `reports/` : rapports et synthèses.
 - `docs/` : dictionnaire de données et décisions méthodologiques.
 
 ## Démarrage
 Voir `docs/INSTALLATION.md`.
+
+## Lancer l'analyse exploratoire
+
+Après avoir placé `marketing_campaign.csv` dans `data/raw/` et activé
+l'environnement virtuel :
+
+```bash
+python src/02_clean_data.py
+python src/03_eda.py
+```
+
+Le script EDA lit `data/processed/marketing_campaign_clean.csv`, enregistre
+les graphiques dans `figures/eda/` et génère la synthèse statistique
+`reports/eda/eda_summary.md`. Il exporte également les statistiques
+descriptives, valeurs manquantes, corrélations, campagnes et distributions
+catégorielles au format CSV dans `reports/eda/`. Les fichiers de données
+restent exclus de Git.
 
 ## Reproductibilité
 Les fichiers de données ne sont pas inclus dans Git. Ajouter la source, la date de téléchargement, le nom du fichier et son empreinte SHA-256 dans `docs/data_sources.md`.
