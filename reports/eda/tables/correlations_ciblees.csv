@@ -1,5 +1,0 @@
-Variable_1,Variable_2,Spearman_rho,p_value,Effectif
-Income,Total_Spend,0.8509201960468213,0.0,2216
-Age_Client,Total_Spend,0.15677272202704098,8.529552897775893e-14,2240
-Nb_Enfants_Foyer,Total_Spend,-0.4838324792496069,8.591541495024584e-132,2240
-NumWebVisitsMonth,NumWebPurchases,-0.09722232590644911,4.0314273005332695e-06,2240
