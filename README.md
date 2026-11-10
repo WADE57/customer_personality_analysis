@@ -16,7 +16,9 @@ Projet portfolio de Data Science : analyse du comportement client, segmentation 
 - `data/processed/` : données préparées (non suivies par Git).
 - `src/` : scripts Python d'inspection, de nettoyage et d'analyse.
 - `figures/eda/` : graphiques de l'analyse exploratoire.
+- `figures/segmentation/` : diagnostics de l'ACP et des segments.
 - `reports/eda/` : synthèses et rapports de l'analyse exploratoire.
+- `reports/segmentation/` : profils et résultats de l'ACP/segmentation.
 - `notebooks/` : analyses exploratoires complémentaires.
 - `R/` : scripts R.
 - `docs/` : dictionnaire de données et décisions méthodologiques.
@@ -41,6 +43,20 @@ dans `figures/eda/`, puis génère la synthèse statistique
 descriptives, valeurs manquantes, corrélations, campagnes et distributions
 catégorielles au format CSV dans `reports/eda/`. Les fichiers de données
 restent exclus de Git.
+
+## Lancer l'ACP et la segmentation (R)
+
+Après avoir exécuté le nettoyage Python et installé les packages R indiqués
+dans `docs/INSTALLATION.md` :
+
+```bash
+Rscript R/04_pca_clustering.R
+```
+
+Le script exclut `ID` et `Response` de la segmentation, sélectionne le nombre
+de groupes avec la silhouette moyenne et enregistre le rapport dans
+`reports/segmentation/pca_segmentation.md`, ainsi que les figures dans
+`figures/segmentation/`.
 
 ## Reproductibilité
 Les fichiers de données ne sont pas inclus dans Git. Ajouter la source, la date de téléchargement, le nom du fichier et son empreinte SHA-256 dans `docs/data_sources.md`.

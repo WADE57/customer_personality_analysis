@@ -27,8 +27,10 @@ git --version
 Dans R, installer les packages de départ :
 
 ```r
-install.packages(c("tidyverse", "readr", "readxl", "janitor", "skimr", "FactoMineR", "factoextra"))
+install.packages(c("tidyverse", "readr", "readxl", "janitor", "skimr", "FactoMineR", "factoextra", "cluster", "ggplot2"))
 ```
+
+Le script `R/04_pca_clustering.R` utilise `ggplot2` et `cluster`.
 
 ## Environnement Python
 
