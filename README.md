@@ -32,13 +32,81 @@ la décision pour améliorer le ciblage des campagnes marketing.
   `rmarkdown` et `knitr` (rapport).
 - Git et GitHub : versionnement et documentation.
 
-## Démarche
+## Résultats clés
 
-Le projet adopte une approche reproductible, combinant analyse statistique,
-visualisation des données et apprentissage non supervisé. Les résultats sont
-documentés progressivement, sans supposer ni inventer de conclusions. Les
-recommandations issues de la segmentation sont des pistes à valider par des
-tests marketing, et non des conclusions causales.
+L'analyse porte sur **2 240 clients**. Après préparation de 16 variables
+numériques, les sept premières composantes principales expliquent **82,81 %**
+de la variance. Le nombre de groupes retenu par silhouette est **K = 2**.
+
+| Indicateur | Résultat observé |
+|---|---:|
+| Silhouette moyenne K-means | 0,357 (séparation modérée) |
+| Silhouette moyenne Ward.D2 | 0,309 |
+| ARI entre les partitions K-means et Ward | 0,469 |
+| ARI moyen, 100 initialisations K-means | 0,992 |
+| ARI moyen, 100 sous-échantillons de 80 % | 0,979 |
+| Silhouette du test mis de côté (20 %) | 0,377 |
+| Clients de la partition initiale avec silhouette ≤ 0,10 | 194 (8,66 %) |
+
+Le test 80/20 ajuste l'imputation, le plafonnement, la standardisation,
+l'ACP et K-means sur les 80 % d'entraînement uniquement. Sa silhouette est
+calculée entre les clients du test après affectation aux centroïdes appris ;
+elle ne mesure pas leur distance à tous les clients d'entraînement. Le test
+provient du même jeu de données et ne constitue pas une validation externe.
+La stabilité par sous-échantillonnage maintient, elle, le prétraitement et
+l'ACP calculés sur l'ensemble des clients.
+
+Les profils sont descriptifs : le segment 1 présente un revenu médian de
+35 765 et des dépenses totales médianes de 69 ; pour le segment 2, ces
+médianes sont respectivement de 68 211 et 1 034. Le taux de réponse observé
+est de 10,62 % et 19,21 %. Ces constats ne démontrent pas de causalité,
+d'efficacité marketing ou de comportement futur.
+
+## Figures sélectionnées
+
+### ACP — variance expliquée
+
+![Variance individuelle et cumulée expliquée par l'ACP](figures/segmentation/01_variance_acp.png)
+
+### K-means — projection des clients et centroïdes
+
+![Projection PC1-PC2 des clients par segment, avec centroïdes K-means](figures/segmentation/09_kmeans_centroides_silhouette.png)
+
+### Comparaison des distributions par segment
+
+![Boîtes à moustaches des caractéristiques quantitatives par segment](figures/segmentation/11_distributions_quantitatives_segments.png)
+
+### Comparaison K-means et Ward.D2
+
+![Partitions K-means et Ward.D2 représentées dans le plan des deux premières composantes](figures/segmentation/06_comparaison_partitions_kmeans_cah.png)
+
+## Données et méthodologie
+
+Le fichier brut local contient 2 240 clients et 29 colonnes, avec des champs
+séparés par tabulation. Le nettoyage Python produit un fichier préparé de
+2 240 lignes et 31 colonnes ; l'analyse exploratoire y relève 24 revenus
+manquants et aucun doublon exact. Les fichiers de données sont exclus de Git.
+La provenance exacte et la licence restent à confirmer (voir
+[`docs/data_sources.md`](docs/data_sources.md)).
+
+Le pipeline :
+
+1. Inspecte et prépare les données, puis produit une analyse exploratoire.
+2. Exclut `ID`, `Response` et les variables catégorielles de la construction
+   des segments ; `Response` sert uniquement à décrire les groupes ensuite.
+3. Pour l'ACP et K-means, traite les âges supérieurs à 90 et le revenu égal à
+   666666 comme manquants, impute par médiane, plafonne les six variables de
+   dépenses aux percentiles 1 et 99, applique `log1p` au revenu et aux
+   dépenses, puis centre-réduit les 16 variables numériques.
+4. Retient assez de composantes pour expliquer au moins 80 % de la variance
+   (maximum 10), choisit K entre 2 et 8 selon la silhouette et compare
+   K-means à Ward.D2.
+5. Évalue les silhouettes, la stabilité, les profils et une validation
+   interne 80/20 où le prétraitement, l'ACP et K-means sont ajustés sur
+   l'entraînement uniquement.
+
+Les traitements spécifiques à l'ACP ne modifient pas le CSV préparé.
+Consulter le rapport pour les détails, paramètres et sorties complets.
 
 ## Structure
 - `data/raw/` : fichiers originaux, non modifiés (non suivis par Git).
@@ -54,6 +122,11 @@ tests marketing, et non des conclusions causales.
 
 ## Démarrage
 Voir `docs/INSTALLATION.md`.
+
+Le [rapport complet en Markdown](reports/segmentation/pca_segmentation.md)
+est consultable directement sur GitHub. Le [rapport HTML](reports/segmentation/pca_segmentation.html)
+est généré localement par le pipeline ; télécharge-le puis ouvre-le dans un
+navigateur pour consulter sa version avec les figures intégrées.
 
 ## Exécuter tout le projet
 
@@ -71,114 +144,40 @@ la segmentation et le rendu du rapport R. Il s'arrête dès qu'une étape
 échoue. Les principaux rapports sont générés dans `reports/eda/` et
 `reports/segmentation/`.
 
-## Lancer l'analyse exploratoire
+## Rapports et sorties
 
-Après avoir placé `marketing_campaign.csv` dans `data/raw/` et activé
-l'environnement virtuel :
+- [Rapport EDA](reports/eda/eda_summary.md) : qualité des données,
+  statistiques descriptives, corrélations et comportement de réponse.
+- [Rapport ACP et segmentation](reports/segmentation/pca_segmentation.md) :
+  méthodologie complète, diagnostics, stabilité, comparaison des méthodes,
+  distributions et interprétation métier.
+- Le rapport [HTML](reports/segmentation/pca_segmentation.html) est généré
+  par `./run_all.sh`; télécharger le fichier et l'ouvrir dans un navigateur
+  pour consulter les figures intégrées.
+- Les fichiers CSV détaillés se trouvent sous `reports/eda/tables/` et
+  `reports/segmentation/`.
 
-```bash
-python src/02_clean_data.py
-python src/03_eda.py
-```
+### Interprétation métier (descriptive)
 
-Le script EDA lit `data/processed/marketing_campaign_clean.csv`, enregistre
-une sélection de dix figures utiles à la segmentation et à la modélisation
-dans `figures/eda/`, puis génère la synthèse statistique
-`reports/eda/eda_summary.md`. Il exporte également les statistiques
-descriptives, valeurs manquantes, corrélations, campagnes et distributions
-catégorielles au format CSV dans `reports/eda/`. Les fichiers de données
-restent exclus de Git.
+Sur les données étudiées, K-means distingue deux profils :
 
-## Lancer l'ACP et la segmentation (R)
+- **Segment 1 — intensité d'achat plus faible** : 1 121 clients (50,04 %),
+  revenu médian de 35 765, dépenses totales médianes de 69 contre 396 pour
+  l'ensemble, et taux de réponse observé de 10,62 %. Les médianes d'achats
+  sont de 3 en magasin, 2 sur le Web et 0 par catalogue.
+- **Segment 2 — intensité d'achat et dépenses plus élevées** : 1 119 clients
+  (49,96 %), revenu médian de 68 211, dépenses totales médianes de 1 034 et
+  taux de réponse observé de 19,21 %. Les médianes d'achats sont de 8 en
+  magasin, 5 sur le Web et 4 par catalogue.
 
-Après avoir exécuté le nettoyage Python et installé les packages R indiqués
-dans `docs/INSTALLATION.md` :
-
-```bash
-Rscript -e 'rmarkdown::render("R/04_pca_clustering.Rmd", output_file = "pca_segmentation.html", output_dir = "reports/segmentation")'
-```
-
-Le rapport HTML exécute le diagnostic des variables puis l'ACP et la
-segmentation. Il présente la variance expliquée, les variables les plus
-associées à chaque composante, le choix du nombre de segments, leurs profils,
-une évaluation de la stabilité de K-means selon plusieurs initialisations et
-un sous-échantillonnage répété des clients, ainsi que des recommandations
-marketing fondées sur les données observées. Il
-intègre les tableaux et les figures au rapport et exporte également les
-résultats CSV sous `reports/segmentation/`. Le diagnostic signale les valeurs
-atypiques, sans les supprimer ni les modifier.
-
-Le rapport compare également K-means à la classification ascendante
-hiérarchique avec le critère de Ward (`Ward.D2`), sur les mêmes clients, les
-mêmes scores d'ACP et le même nombre de groupes. La comparaison inclut les
-silhouettes, l'ARI entre les partitions, les tailles et les profils des
-groupes, ainsi que deux figures comparatives dans le plan ACP et sur la
-silhouette. Le plan ACP indique les centroïdes de K-means et le rapport
-contient également le dendrogramme de Ward.D2. La CAH requiert une mémoire de
-l'ordre de `O(n²)`.
-
-Les principales sorties dédiées à l'interprétation sont
-`reports/segmentation/interpretation_composantes_acp.csv` et
-`reports/segmentation/recommandations_marketing.csv`. La stabilité est
-résumée dans `reports/segmentation/resume_stabilite_kmeans.csv` et détaillée
-dans `reports/segmentation/stabilite_kmeans_initialisations.csv`. La
-sensibilité à la composition de l'échantillon est résumée dans
-`reports/segmentation/resume_stabilite_sous_echantillonnage.csv` et détaillée
-dans `reports/segmentation/stabilite_sous_echantillonnage.csv`. Ce dernier
-diagnostic conserve fixes le prétraitement et l'ACP calculés sur l'ensemble
-des clients ; il évalue la stabilité de K-means dans cet espace, pas celle de
-toute la chaîne de traitement sur une nouvelle population.
-
-Les résultats comparatifs K-means/CAH sont disponibles dans
-`reports/segmentation/comparaison_kmeans_cah.csv`,
-`reports/segmentation/tailles_segments_comparaison.csv` et
-`reports/segmentation/profils_kmeans_cah.csv`. Les figures sont
-`figures/segmentation/06_comparaison_partitions_kmeans_cah.png` et
-`figures/segmentation/07_comparaison_silhouette_kmeans_cah.png`, ainsi que
-`figures/segmentation/08_dendrogramme_cah_ward.png` et
-`figures/segmentation/09_kmeans_centroides_silhouette.png`.
-
-Sur les données actuelles, 100 sous-échantillons de 80 % des clients donnent
-un ARI moyen de 0,979, un minimum de 0,928 et un quantile à 5 % de 0,935,
-comparés à la partition de référence. Ces résultats indiquent une forte
-similarité des partitions dans l'espace ACP utilisé, sans démontrer leur
-stabilité sur une population indépendante.
-
-Le rapport réalise aussi une validation interne en réservant 20 % des clients
-avant le prétraitement : imputation, plafonnement, standardisation, ACP et
-K-means sont ajustés uniquement sur les 80 % d'entraînement. Le modèle est
-ensuite appliqué au test mis de côté. Cette vérification concerne le même
-jeu de données et ne remplace pas une validation externe sur une autre
-période ou population. Les silhouettes individuelles inférieures ou égales
-à 0,10 sont exportées pour examiner les clients proches de la frontière.
-Les résultats sont enregistrés dans
-`reports/segmentation/validation_echantillon_mis_de_cote.csv`,
-`profils_segments_test_independant.csv` et
-`clients_proches_frontiere.csv`. Les largeurs de silhouette de chaque client
-sont exportées dans `silhouettes_individuelles.csv`, résumées par segment
-dans `diagnostic_silhouette_segments.csv` et visualisées dans
-`figures/segmentation/10_silhouettes_individuelles.png`.
-La silhouette de validation est calculée sur les distances entre clients
-test uniquement ; les silhouettes proches de zéro décrivent la segmentation
-initiale de tous les clients, pas le seul échantillon test.
-
-L'analyse descriptive des segments exporte les statistiques quantitatives,
-les distributions catégorielles et les comparaisons exploratoires
-(Wilcoxon-Mann-Whitney ou chi-deux, correction de Holm et tailles d'effet)
-dans `distributions_quantitatives_segments.csv`,
-`distributions_categorielles_segments.csv` et `tests_differences_segments.csv`.
-Les figures associées sont les boxplots, les distributions cumulées et les
-répartitions catégorielles dans `figures/segmentation/11_*.png` à
-`13_*.png`. Les tests sont interprétés avec prudence, car plusieurs variables
-ont servi à construire les clusters.
-
-Le script exclut `ID` et `Response` de la segmentation, sélectionne le nombre
-de groupes avec la silhouette moyenne et enregistre le rapport dans
-`reports/segmentation/pca_segmentation.html` (ainsi qu'une synthèse Markdown
-dans `reports/segmentation/pca_segmentation.md`) et les figures dans
-`figures/segmentation/`. Les recommandations sont des hypothèses descriptives
-basées sur les dépenses, le canal d'achat le plus utilisé et les taux de
-réponse observés ; elles ne démontrent pas l'efficacité causale d'une action.
+Ces profils décrivent l'échantillon ; ils ne démontrent ni causalité, ni
+valeur vie client, ni comportement futur. « Magasin » est le canal dont la
+médiane du nombre d'achats est la plus élevée dans les deux segments. Cela
+ne signifie pas qu'il représente la majorité des dépenses. Les pistes
+marketing (découverte/vente croisée pour le segment 1 ; fidélisation/offres
+premium pour le segment 2) sont des hypothèses à évaluer par des campagnes
+pilotes contrôlées, avec un groupe témoin et des indicateurs de résultat
+définis à l'avance.
 
 ## État de la validation
 
@@ -194,4 +193,8 @@ réponse observés ; elles ne démontrent pas l'efficacité causale d'une action
 | Validation externe sur une autre période ou population | À réaliser |
 
 ## Reproductibilité
-Les fichiers de données ne sont pas inclus dans Git. Ajouter la source, la date de téléchargement, le nom du fichier et son empreinte SHA-256 dans `docs/data_sources.md`.
+Les fichiers de données ne sont pas inclus dans Git. La provenance exacte,
+la licence et la date de téléchargement restent à confirmer ; les dimensions
+et empreintes locales vérifiées sont consignées dans
+[`docs/data_sources.md`](docs/data_sources.md). Ne republie pas le jeu de
+données avant d'avoir vérifié les conditions de sa source.

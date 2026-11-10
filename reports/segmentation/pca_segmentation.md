@@ -508,6 +508,59 @@ réponse à une campagne est de
 19.21 % dans le segment 2. Ces écarts
 décrivent les groupes sur cet échantillon ; ils n'impliquent pas de causalité.
 
+## Interprétation métier des segments
+
+### Résultats statistiques observés
+
+Le segment 1 comprend **1121
+clients (50.04 %)**.
+Sa dépense totale médiane est de **69**,
+inférieure à la médiane globale de **396**.
+Son revenu médian est de **35 765**.
+Les médianes d'achats sont de **3** en magasin,
+**2** sur le Web et
+**0** par catalogue.
+Le taux de réponse observé est de **10.62 %**.
+
+Le segment 2 comprend **1119
+clients (49.96 %)**.
+Sa dépense totale médiane est de **1 034**,
+au-dessus de la médiane globale de **396**.
+Son revenu médian est de **68 211**.
+Les médianes d'achats sont de **8** en magasin,
+**5** sur le Web et
+**4** par catalogue.
+Le taux de réponse observé est de **19.21 %**.
+
+### Lecture métier prudente
+
+Dans les données étudiées, le segment 1 présente une intensité d'achat et
+des dépenses plus faibles. Le segment 2 rassemble des clients aux dépenses,
+revenus médians et fréquences d'achat observés plus élevés. Les différences
+de taux de réponse sont descriptives et ne démontrent pas que l'appartenance
+à un segment cause une réponse plus élevée. Il s'agit de profils observés,
+pas d'une valeur vie client ni d'une prévision de comportement futur.
+
+Le canal « Magasin » désigne le canal dont le **nombre médian d'achats**
+est le plus élevé dans chaque segment. Cela ne signifie ni que ce canal
+représente la majorité des dépenses, ni qu'il génère la majorité du chiffre
+d'affaires.
+
+### Recommandations à tester
+
+- **Segment 1 :** expérimenter une offre de découverte, une promotion ciblée
+  ou une action de vente croisée, avec plusieurs messages à comparer.
+- **Segment 2 :** tester une action de fidélisation, une offre premium ou
+  des produits complémentaires.
+- Dans les deux cas, adapter le pilote au canal magasin, où la médiane du
+  nombre d'achats est la plus élevée, sans en déduire une répartition des
+  dépenses par canal.
+- Mesurer les résultats à l'aide d'un groupe témoin et d'indicateurs définis
+  à l'avance (conversion, chiffre d'affaires incrémental et rentabilité).
+
+Ces actions sont des hypothèses opérationnelles. Leur efficacité doit être
+mesurée par des campagnes contrôlées avant tout déploiement.
+
 ![Répartition de la réponse, de l'éducation et du statut matrimonial dans chaque segment.](../figures/segmentation/13_distributions_categorielles_segments.png)
 
 ## Recommandations marketing à tester
@@ -520,10 +573,10 @@ hypothèses de ciblage ; elles ne démontrent ni causalité ni efficacité futur
 
 Table: Pistes marketing fondées sur les profils observés
 
-| Segment| Depenses_totales_medianes| Depenses_totales_medianes_population|Niveau_depenses |Canal_achat_median_le_plus_utilise | Taux_reponse_pct| Taux_reponse_population_pct|Recommandation                                                                                                                                                                                           |
-|-------:|-------------------------:|------------------------------------:|:---------------|:----------------------------------|----------------:|---------------------------:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|       1|                        69|                                  396|au-dessous      |Magasin                            |            10.62|                       14.91|Tester une offre de découverte ou de vente croisée. Adapter le test au canal d'achat médian le plus utilisé : Magasin. Tester plusieurs messages ou incitations avant d'augmenter la pression marketing. |
-|       2|                      1034|                                  396|au-dessus       |Magasin                            |            19.21|                       14.91|Tester une action de fidélisation ou une offre premium. Adapter le test au canal d'achat médian le plus utilisé : Magasin. Prioriser un pilote de campagne sur ce segment.                               |
+| Segment| Depenses_totales_medianes| Depenses_totales_medianes_population|Niveau_depenses |Canal_achat_median_le_plus_utilise | Taux_reponse_pct| Taux_reponse_population_pct|Recommandation                                                                                                                                                                                                                                                                    |
+|-------:|-------------------------:|------------------------------------:|:---------------|:----------------------------------|----------------:|---------------------------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|       1|                        69|                                  396|au-dessous      |Magasin                            |            10.62|                       14.91|Tester une offre de découverte ou de vente croisée. Adapter le test au canal où la médiane du nombre d'achats est la plus élevée : Magasin (cela ne mesure pas la part des dépenses par canal). Tester plusieurs messages ou incitations avant d'augmenter la pression marketing. |
+|       2|                      1034|                                  396|au-dessus       |Magasin                            |            19.21|                       14.91|Tester une action de fidélisation ou une offre premium. Adapter le test au canal où la médiane du nombre d'achats est la plus élevée : Magasin (cela ne mesure pas la part des dépenses par canal). Prioriser un pilote de campagne sur ce segment.                               |
 
 ## Interprétation et limites
 

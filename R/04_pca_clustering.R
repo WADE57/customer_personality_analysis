@@ -2704,9 +2704,9 @@ marketing_recommendations <- do.call(
         Recommandation = paste(
           spending_action,
           paste0(
-            "Adapter le test au canal d'achat médian le plus utilisé : ",
+            "Adapter le test au canal où la médiane du nombre d'achats est la plus élevée : ",
             preferred_channel,
-            "."
+            " (cela ne mesure pas la part des dépenses par canal)."
           ),
           response_action
         ),

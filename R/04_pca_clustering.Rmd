@@ -534,6 +534,10 @@ categorical_distributions <- read.csv(
   ),
   check.names = FALSE
 )
+recommendations <- read.csv(
+  file.path(segmentation_dir, "recommandations_marketing.csv"),
+  check.names = FALSE
+)
 knitr::kable(
   categorical_distributions,
   digits = 2,
@@ -576,6 +580,59 @@ réponse à une campagne est de
 `r sprintf("%.2f", response_yes_pct[[1]])` % dans le segment 1 et
 `r sprintf("%.2f", response_yes_pct[[2]])` % dans le segment 2. Ces écarts
 décrivent les groupes sur cet échantillon ; ils n'impliquent pas de causalité.
+
+## Interprétation métier des segments
+
+### Résultats statistiques observés
+
+Le segment 1 comprend **`r profiles$Nombre_clients[profiles$Segment == 1]`
+clients (`r sprintf("%.2f", profiles$Nombre_clients[profiles$Segment == 1] / sum(profiles$Nombre_clients) * 100)` %)**.
+Sa dépense totale médiane est de **`r format(recommendations$Depenses_totales_medianes[recommendations$Segment == 1], big.mark = " ", decimal.mark = ",")`**,
+inférieure à la médiane globale de **`r format(recommendations$Depenses_totales_medianes_population[recommendations$Segment == 1], big.mark = " ", decimal.mark = ",")`**.
+Son revenu médian est de **`r format_segment_median("Income", "1")`**.
+Les médianes d'achats sont de **`r format_segment_median("NumStorePurchases", "1")`** en magasin,
+**`r format_segment_median("NumWebPurchases", "1")`** sur le Web et
+**`r format_segment_median("NumCatalogPurchases", "1")`** par catalogue.
+Le taux de réponse observé est de **`r sprintf("%.2f", response_yes_pct[[1]])` %**.
+
+Le segment 2 comprend **`r profiles$Nombre_clients[profiles$Segment == 2]`
+clients (`r sprintf("%.2f", profiles$Nombre_clients[profiles$Segment == 2] / sum(profiles$Nombre_clients) * 100)` %)**.
+Sa dépense totale médiane est de **`r format(recommendations$Depenses_totales_medianes[recommendations$Segment == 2], big.mark = " ", decimal.mark = ",")`**,
+au-dessus de la médiane globale de **`r format(recommendations$Depenses_totales_medianes_population[recommendations$Segment == 2], big.mark = " ", decimal.mark = ",")`**.
+Son revenu médian est de **`r format_segment_median("Income", "2")`**.
+Les médianes d'achats sont de **`r format_segment_median("NumStorePurchases", "2")`** en magasin,
+**`r format_segment_median("NumWebPurchases", "2")`** sur le Web et
+**`r format_segment_median("NumCatalogPurchases", "2")`** par catalogue.
+Le taux de réponse observé est de **`r sprintf("%.2f", response_yes_pct[[2]])` %**.
+
+### Lecture métier prudente
+
+Dans les données étudiées, le segment 1 présente une intensité d'achat et
+des dépenses plus faibles. Le segment 2 rassemble des clients aux dépenses,
+revenus médians et fréquences d'achat observés plus élevés. Les différences
+de taux de réponse sont descriptives et ne démontrent pas que l'appartenance
+à un segment cause une réponse plus élevée. Il s'agit de profils observés,
+pas d'une valeur vie client ni d'une prévision de comportement futur.
+
+Le canal « Magasin » désigne le canal dont le **nombre médian d'achats**
+est le plus élevé dans chaque segment. Cela ne signifie ni que ce canal
+représente la majorité des dépenses, ni qu'il génère la majorité du chiffre
+d'affaires.
+
+### Recommandations à tester
+
+- **Segment 1 :** expérimenter une offre de découverte, une promotion ciblée
+  ou une action de vente croisée, avec plusieurs messages à comparer.
+- **Segment 2 :** tester une action de fidélisation, une offre premium ou
+  des produits complémentaires.
+- Dans les deux cas, adapter le pilote au canal magasin, où la médiane du
+  nombre d'achats est la plus élevée, sans en déduire une répartition des
+  dépenses par canal.
+- Mesurer les résultats à l'aide d'un groupe témoin et d'indicateurs définis
+  à l'avance (conversion, chiffre d'affaires incrémental et rentabilité).
+
+Ces actions sont des hypothèses opérationnelles. Leur efficacité doit être
+mesurée par des campagnes contrôlées avant tout déploiement.
 
 ```{r categorical-distributions-figure, echo=FALSE, fig.cap="Répartition de la réponse, de l'éducation et du statut matrimonial dans chaque segment."}
 knitr::include_graphics(

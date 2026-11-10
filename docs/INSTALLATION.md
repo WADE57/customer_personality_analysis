@@ -24,14 +24,20 @@ R --version
 git --version
 ```
 
-Dans R, installer les packages de départ :
+Installer uniquement les packages R nécessaires au pipeline ACP/segmentation :
 
 ```r
-install.packages(c("tidyverse", "readr", "readxl", "janitor", "skimr", "FactoMineR", "factoextra", "cluster", "ggplot2", "rmarkdown", "knitr"))
+install.packages(c("ggplot2", "cluster", "rmarkdown", "knitr"))
 ```
 
-Le rapport `R/04_pca_clustering.Rmd` et le script `R/04_pca_clustering.R`
-utilisent `ggplot2`, `cluster`, `rmarkdown` et `knitr`.
+## Données
+
+Placer le fichier source `marketing_campaign.csv` dans `data/raw/`. Le
+nettoyage produit `data/processed/marketing_campaign_clean.csv`; ces
+répertoires sont exclus de Git. La provenance et l'empreinte du fichier
+présent localement sont décrites dans [`data_sources.md`](data_sources.md).
+Vérifier la licence et les conditions de réutilisation auprès de la source
+avant de republier ou redistribuer les données.
 
 ## Environnement Python
 
@@ -42,4 +48,11 @@ cd chemin/vers/customer_personality_analysis
 source .venv/bin/activate
 ```
 
-Ne pas versionner `.venv/` ni les fichiers de données brutes.
+Puis lancer l'ensemble du pipeline :
+
+```bash
+./run_all.sh
+```
+
+Le script utilise `.venv/bin/python` lorsqu'il existe. Ne pas versionner
+`.venv/` ni les fichiers de données.
