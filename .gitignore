@@ -4,6 +4,14 @@ data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
+# Exports contenant des observations individuelles
+/reports/segmentation/affectation_clients_segments.csv
+/reports/segmentation/affectations_test_independant.csv
+/reports/segmentation/clients_proches_frontiere.csv
+/reports/segmentation/diagnostic_ages_superieurs_90.csv
+/reports/segmentation/diagnostic_revenus_superieurs_150000.csv
+/reports/segmentation/silhouettes_individuelles.csv
+
 # Python
 .venv/
 __pycache__/

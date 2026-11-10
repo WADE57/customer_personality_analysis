@@ -208,11 +208,9 @@ Table: Distribution des silhouettes individuelles par segment
 
 ![Silhouettes de chaque client, triées dans chaque segment. La ligne rouge marque zéro et la ligne orange le seuil exploratoire de 0,10.](../figures/segmentation/10_silhouettes_individuelles.png)
 
-Les valeurs individuelles avec l'identifiant du client, son segment et son
-segment voisin sont disponibles dans
-`reports/segmentation/silhouettes_individuelles.csv`. La liste des clients
-dont la silhouette est inférieure ou égale à 0,10 est également exportée
-avec leurs caractéristiques dans `clients_proches_frontiere.csv`.
+Des exports individuels sont générés localement pour examiner les silhouettes
+et les clients proches de la frontière. Ils contiennent des identifiants et
+des caractéristiques client et ne sont pas destinés à être publiés.
 
 ### Stabilité selon les initialisations de K-means
 
@@ -302,33 +300,6 @@ Table: Résumé des silhouettes proches de zéro ou négatives
 | Seuil_silhouette| Nombre_clients_proches_frontiere| Pourcentage_clients_proches_frontiere| Nombre_silhouettes_negatives| Pourcentage_silhouettes_negatives|
 |----------------:|--------------------------------:|-------------------------------------:|----------------------------:|---------------------------------:|
 |              0.1|                              194|                                  8.66|                           10|                              0.45|
-
-
-
-Table: Jusqu'à 20 clients les plus proches de la frontière ; liste complète dans le CSV
-
-|   ID| Segment| Segment_voisin| Silhouette| Income| MntWines| MntMeatProducts| NumWebPurchases| NumStorePurchases| Response|
-|----:|-------:|--------------:|----------:|------:|--------:|---------------:|---------------:|-----------------:|--------:|
-| 2853|       2|              1|     -0.019|  51766|       60|              87|               4|                 4|        0|
-|  983|       2|              1|     -0.017|  40059|      110|              92|               6|                 3|        0|
-| 7930|       2|              1|     -0.014|  26877|      101|              76|               3|                 6|        0|
-| 9246|       2|              1|     -0.013|  40101|      171|             129|               6|                 6|        0|
-| 8070|       2|              1|     -0.010|  54222|      199|              31|               3|                 5|        0|
-| 4426|       2|              1|     -0.007|  55801|      367|              51|               7|                 6|        0|
-| 2961|       2|              1|     -0.007|  42081|      175|             110|               6|                 4|        0|
-| 8132|       2|              1|     -0.004|  60631|      565|              65|               9|                 8|        0|
-| 4324|       2|              1|     -0.004|  42387|      235|             235|               8|                 7|        0|
-| 3083|       2|              1|     -0.004|  45837|      215|              87|               6|                 5|        0|
-| 2948|       2|              1|      0.004|  62637|      104|              48|               2|                 5|        0|
-| 3427|       2|              1|      0.004|  59821|      629|              70|              11|                 7|        0|
-| 5552|       2|              1|      0.005|  48721|       81|             113|               4|                 5|        0|
-| 9360|       2|              1|      0.006|  37040|       86|              73|               4|                 5|        0|
-| 7108|       2|              1|      0.006|  51390|      205|              47|               5|                 5|        0|
-| 3117|       1|              2|      0.007|     NA|      264|              21|               6|                 5|        0|
-| 4271|       2|              1|      0.008|  38683|       46|              69|               4|                 6|        0|
-|  635|       1|              2|      0.010|  57183|      464|              64|               9|                 7|        0|
-| 9970|       2|              1|      0.011|  55375|       42|              57|               1|                 6|        0|
-|  246|       2|              1|      0.012|  66480|      199|              57|               4|                 7|        0|
 
 Dans cette partition, **194
 clients (8.66 %)

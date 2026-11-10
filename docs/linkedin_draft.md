@@ -1,7 +1,8 @@
 # Brouillon de publication LinkedIn
 
-À publier après avoir confirmé la provenance et les conditions de réutilisation
-du jeu de données. Remplacer `[lien du dépôt]` par l'URL GitHub du projet.
+À publier après avoir confirmé que la copie locale des données correspond à
+la source candidate et vérifié les droits d'utilisation. Remplacer
+`[lien du dépôt]` par l'URL GitHub du projet.
 
 ---
 

@@ -280,11 +280,9 @@ knitr::include_graphics(
 )
 ```
 
-Les valeurs individuelles avec l'identifiant du client, son segment et son
-segment voisin sont disponibles dans
-`reports/segmentation/silhouettes_individuelles.csv`. La liste des clients
-dont la silhouette est inférieure ou égale à 0,10 est également exportée
-avec leurs caractéristiques dans `clients_proches_frontiere.csv`.
+Des exports individuels sont générés localement pour examiner les silhouettes
+et les clients proches de la frontière. Ils contiennent des identifiants et
+des caractéristiques client et ne sont pas destinés à être publiés.
 
 ### Stabilité selon les initialisations de K-means
 
@@ -395,21 +393,6 @@ knitr::kable(
   boundary_summary,
   digits = 2,
   caption = "Résumé des silhouettes proches de zéro ou négatives"
-)
-
-boundary_clients <- read.csv(
-  file.path(segmentation_dir, "clients_proches_frontiere.csv"),
-  check.names = FALSE
-)
-boundary_columns <- c(
-  "ID", "Segment", "Segment_voisin", "Silhouette", "Income",
-  "MntWines", "MntMeatProducts", "NumWebPurchases",
-  "NumStorePurchases", "Response"
-)
-knitr::kable(
-  head(boundary_clients[boundary_columns], 20),
-  digits = 3,
-  caption = "Jusqu'à 20 clients les plus proches de la frontière ; liste complète dans le CSV"
 )
 ```
 

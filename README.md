@@ -86,8 +86,11 @@ Le fichier brut local contient 2 240 clients et 29 colonnes, avec des champs
 séparés par tabulation. Le nettoyage Python produit un fichier préparé de
 2 240 lignes et 31 colonnes ; l'analyse exploratoire y relève 24 revenus
 manquants et aucun doublon exact. Les fichiers de données sont exclus de Git.
-La provenance exacte et la licence restent à confirmer (voir
-[`docs/data_sources.md`](docs/data_sources.md)).
+Une source Kaggle candidate et sa licence CC0 affichée ont été identifiées,
+mais la taille de la copie locale (882 954 octets) ne correspond pas à celle
+annoncée par Kaggle (220 188 octets). La provenance exacte de cette copie
+reste donc à confirmer avant toute redistribution ; voir
+[`docs/data_sources.md`](docs/data_sources.md).
 
 Le pipeline :
 
@@ -118,7 +121,7 @@ Consulter le rapport pour les détails, paramètres et sorties complets.
 - `reports/segmentation/` : profils et résultats de l'ACP/segmentation.
 - `notebooks/` : analyses exploratoires complémentaires.
 - `R/` : scripts R.
-- `docs/` : dictionnaire de données et décisions méthodologiques.
+- `docs/` : installation, provenance des données et brouillon de communication.
 
 ## Démarrage
 Voir `docs/INSTALLATION.md`.
@@ -154,8 +157,10 @@ la segmentation et le rendu du rapport R. Il s'arrête dès qu'une étape
 - Le rapport [HTML](reports/segmentation/pca_segmentation.html) est généré
   par `./run_all.sh`; télécharger le fichier et l'ouvrir dans un navigateur
   pour consulter les figures intégrées.
-- Les fichiers CSV détaillés se trouvent sous `reports/eda/tables/` et
-  `reports/segmentation/`.
+- Les tableaux agrégés se trouvent sous `reports/eda/tables/` et
+  `reports/segmentation/`. Les exports contenant des lignes individuelles
+  (identifiants ou caractéristiques client) sont générés localement, exclus
+  du suivi Git et ne figurent pas dans le dépôt.
 
 ### Interprétation métier (descriptive)
 
@@ -192,9 +197,11 @@ définis à l'avance.
 | Validation interne sur un test mis de côté, prétraitement/ACP ajustés sur l'entraînement | Réalisée |
 | Validation externe sur une autre période ou population | À réaliser |
 
-## Reproductibilité
-Les fichiers de données ne sont pas inclus dans Git. La provenance exacte,
-la licence et la date de téléchargement restent à confirmer ; les dimensions
-et empreintes locales vérifiées sont consignées dans
-[`docs/data_sources.md`](docs/data_sources.md). Ne republie pas le jeu de
-données avant d'avoir vérifié les conditions de sa source.
+## Reproductibilité et provenance
+
+Les fichiers de données ne sont pas inclus dans Git. Kaggle affiche une
+licence CC0 pour le jeu candidat, mais la copie locale n'a pas été identifiée
+comme étant exactement celle publiée : sa taille diffère des métadonnées
+Kaggle. Vérifier la source et les droits de la copie avant toute
+redistribution. Les sources, réserves et empreintes locales figurent dans
+[`docs/data_sources.md`](docs/data_sources.md).
