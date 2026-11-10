@@ -1,12 +1,15 @@
-args <- commandArgs(trailingOnly = FALSE)
-file_arg <- grep("^--file=", args, value = TRUE)
-
-if (length(file_arg) == 0) {
-  stop("Impossible de déterminer le chemin du script. Lancez-le avec Rscript.")
+project_root <- Sys.getenv("CUSTOMER_PERSONALITY_PROJECT_ROOT", unset = "")
+if (nzchar(project_root)) {
+  project_root <- normalizePath(project_root, mustWork = TRUE)
+} else {
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- grep("^--file=", args, value = TRUE)
+  if (length(file_arg) == 0) {
+    stop("Impossible de déterminer le chemin du projet. Lancez le script avec Rscript.")
+  }
+  script_path <- normalizePath(sub("^--file=", "", file_arg[[1]]))
+  project_root <- dirname(dirname(script_path))
 }
-
-script_path <- normalizePath(sub("^--file=", "", file_arg[[1]]))
-project_root <- dirname(dirname(script_path))
 
 data_path <- file.path(
   project_root,

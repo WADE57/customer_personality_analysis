@@ -1,0 +1,16 @@
+"Variable","Borne_inferieure_IQR","Borne_superieure_IQR","Nombre_valeurs_atypiques","Pourcentage_valeurs_atypiques"
+"Age_Client",10,82,3,0.133928571428571
+"Income",-14525.5,118350.5,8,0.36101083032491
+"Nb_Enfants_Foyer",-1.5,2.5,53,2.36607142857143
+"Recency",-51,149,0,0
+"NumDealsPurchases",-2,6,86,3.83928571428571
+"NumWebVisitsMonth",-3,13,8,0.357142857142857
+"MntWines",-697,1225,35,1.5625
+"MntFruits",-47,81,227,10.1339285714286
+"MntMeatProducts",-308,556,175,7.8125
+"MntFishProducts",-67.5,120.5,223,9.95535714285714
+"MntSweetProducts",-47,81,248,11.0714285714286
+"MntGoldProds",-61.5,126.5,207,9.24107142857143
+"NumWebPurchases",-4,12,4,0.178571428571429
+"NumCatalogPurchases",-6,10,23,1.02678571428571
+"NumStorePurchases",-4.5,15.5,0,0

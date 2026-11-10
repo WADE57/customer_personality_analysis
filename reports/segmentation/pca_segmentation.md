@@ -25,18 +25,15 @@
 
 Les médianes des variables d'origine et le taux de réponse par segment sont décrits après la segmentation. `Response` n'a pas servi à créer les segments ; son taux est un indicateur descriptif postérieur.
 
- Segment Nombre_clients Age_Client Income Kidhome Teenhome Recency MntWines
-       1           1120         42  35765       1        0      49     24.0
-       2           1120         47  68148       0        0      50    490.5
- MntFruits MntMeatProducts MntFishProducts MntSweetProducts MntGoldProds
-         2            16.0               3                2           10
-        32           230.5              50               33           53
- NumDealsPurchases NumWebPurchases NumCatalogPurchases NumStorePurchases
-                 2               2                   0                 3
-                 1               5                   4                 8
- NumWebVisitsMonth Taux_reponse_pct Education_majoritaire
-                 7         10.62500            Graduation
-                 4         19.19643            Graduation
+ Segment Nombre_clients Age_Client Income Kidhome Teenhome Recency MntWines MntFruits
+       1           1120         42  35765       1        0      49     24.0         2
+       2           1120         47  68148       0        0      50    490.5        32
+ MntMeatProducts MntFishProducts MntSweetProducts MntGoldProds NumDealsPurchases NumWebPurchases
+            16.0               3                2           10                 2               2
+           230.5              50               33           53                 1               5
+ NumCatalogPurchases NumStorePurchases NumWebVisitsMonth Taux_reponse_pct Education_majoritaire
+                   0                 3                 7         10.62500            Graduation
+                   4                 8                 4         19.19643            Graduation
  Statut_matrimonial_majoritaire
                         Married
                         Married

@@ -50,12 +50,18 @@ Après avoir exécuté le nettoyage Python et installé les packages R indiqués
 dans `docs/INSTALLATION.md` :
 
 ```bash
-Rscript R/04_pca_clustering.R
+Rscript -e 'rmarkdown::render("R/04_pca_clustering.Rmd", output_file = "pca_segmentation.html", output_dir = "reports/segmentation")'
 ```
+
+Le rapport HTML exécute le diagnostic des variables puis l'ACP et la
+segmentation. Il intègre les tableaux et les figures au rapport et exporte
+également les résultats CSV sous `reports/segmentation/`. Le diagnostic
+signale les valeurs atypiques, sans les supprimer ni les modifier.
 
 Le script exclut `ID` et `Response` de la segmentation, sélectionne le nombre
 de groupes avec la silhouette moyenne et enregistre le rapport dans
-`reports/segmentation/pca_segmentation.md`, ainsi que les figures dans
+`reports/segmentation/pca_segmentation.html` (ainsi qu'une synthèse Markdown
+dans `reports/segmentation/pca_segmentation.md`) et les figures dans
 `figures/segmentation/`.
 
 ## Reproductibilité

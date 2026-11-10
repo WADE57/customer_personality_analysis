@@ -1,0 +1,196 @@
+---
+title: "ACP et segmentation des clients"
+author: "Customer Personality Analysis"
+lang: fr
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    theme: readable
+---
+
+```{r setup, include=FALSE}
+input_file <- knitr::current_input()
+project_root <- normalizePath(
+  file.path(dirname(input_file), ".."),
+  mustWork = TRUE
+)
+knitr::opts_knit$set(root.dir = dirname(input_file))
+options(width = 100)
+
+required_packages <- c("knitr", "ggplot2", "cluster")
+missing_packages <- required_packages[
+  !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
+]
+if (length(missing_packages) > 0) {
+  stop(
+    "Packages R manquants : ",
+    paste(missing_packages, collapse = ", "),
+    ". Installez-les avec install.packages()."
+  )
+}
+
+data_path <- file.path(
+  project_root,
+  "data",
+  "processed",
+  "marketing_campaign_clean.csv"
+)
+if (!file.exists(data_path)) {
+  stop(
+    "Fichier préparé introuvable : ",
+    data_path,
+    ". Exécutez d'abord python src/02_clean_data.py."
+  )
+}
+
+Sys.setenv(CUSTOMER_PERSONALITY_PROJECT_ROOT = project_root)
+```
+
+Ce rapport décrit les variables candidates à l’ACP, justifie le traitement
+appliqué aux données, puis présente les segments obtenus. Les variables
+`ID` et `Response` ne servent pas à construire les composantes ni les
+segments. `Response` est uniquement décrite après segmentation.
+
+## Préparation et diagnostic
+
+Le diagnostic repère les valeurs manquantes et atypiques avant leur
+prétraitement. Une valeur signalée par la règle IQR n’est pas nécessairement
+une erreur ; elle n’est pas supprimée par ce diagnostic.
+
+```{r diagnostic, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+source(
+  file.path(project_root, "R", "03_diagnose_pca_variables.R"),
+  local = knitr::knit_global()
+)
+```
+
+```{r diagnostic-results, echo=FALSE}
+diagnostic <- read.csv(
+  file.path(
+    project_root,
+    "reports",
+    "segmentation",
+    "diagnostic_valeurs_atypiques_iqr.csv"
+  ),
+  check.names = FALSE
+)
+knitr::kable(
+  diagnostic,
+  digits = 2,
+  caption = "Valeurs atypiques détectées par la règle IQR"
+)
+```
+
+Les revenus manquants sont imputés par la médiane pour l’ACP et le
+clustering. Les valeurs d’âge, de revenu et de dépenses sont limitées aux
+percentiles 1 et 99, puis les revenus et dépenses transformés avec `log1p`.
+Toutes les variables utilisées sont centrées-réduites. Ces opérations
+s’appliquent aux analyses, sans modifier le CSV préparé.
+
+## Analyse en composantes principales
+
+Le nombre de composantes retenu permet d’expliquer au moins 80 % de la
+variance, dans la limite de dix composantes.
+
+```{r pca-clustering, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+source(
+  file.path(project_root, "R", "04_pca_clustering.R"),
+  local = knitr::knit_global()
+)
+
+segmentation_dir <- file.path(project_root, "reports", "segmentation")
+figures_dir <- file.path(project_root, "figures", "segmentation")
+```
+
+```{r pca-variance, echo=FALSE}
+variance <- read.csv(
+  file.path(segmentation_dir, "variance_acp.csv"),
+  check.names = FALSE
+)
+knitr::kable(
+  head(variance, 10),
+  digits = 2,
+  caption = "Variance expliquée par les premières composantes"
+)
+```
+
+```{r pca-variance-figure, echo=FALSE, fig.cap="Variance individuelle et cumulée des composantes principales."}
+if (!file.exists(file.path(figures_dir, "01_variance_acp.png"))) {
+  stop(
+    "Figure manquante. root=", project_root,
+    "; figures_dir=", figures_dir,
+    "; getwd=", getwd()
+  )
+}
+knitr::include_graphics("../figures/segmentation/01_variance_acp.png")
+```
+
+## Segmentation
+
+Le nombre de segments est choisi en comparant la silhouette moyenne pour
+plusieurs valeurs de `K`. La silhouette aide à comparer les partitions,
+mais ne garantit pas à elle seule que les segments soient utiles au métier.
+
+```{r cluster-selection, echo=FALSE}
+selection <- read.csv(
+  file.path(segmentation_dir, "selection_nombre_clusters.csv")
+)
+knitr::kable(
+  selection,
+  digits = 3,
+  caption = "Silhouette moyenne selon le nombre de segments"
+)
+```
+
+```{r cluster-selection-figure, echo=FALSE, fig.cap="Comparaison de la silhouette moyenne pour choisir le nombre de segments."}
+knitr::include_graphics("../figures/segmentation/02_selection_clusters.png")
+```
+
+```{r cluster-diagnostic-figure, echo=FALSE, fig.cap="Distribution des largeurs de silhouette dans la partition retenue."}
+knitr::include_graphics("../figures/segmentation/03_diagnostic_silhouette.png")
+```
+
+```{r cluster-map, echo=FALSE, fig.cap="Clients représentés sur les deux premières composantes, colorés par segment."}
+knitr::include_graphics("../figures/segmentation/04_segments_plan_acp.png")
+```
+
+```{r cluster-sizes, echo=FALSE}
+sizes <- read.csv(
+  file.path(segmentation_dir, "tailles_segments.csv")
+)
+knitr::kable(
+  sizes,
+  digits = 1,
+  caption = "Taille des segments"
+)
+```
+
+```{r cluster-profiles-figure, echo=FALSE, fig.cap="Profil relatif des variables dans chaque segment."}
+knitr::include_graphics("../figures/segmentation/05_profils_segments.png")
+```
+
+```{r cluster-profiles, echo=FALSE}
+profiles <- read.csv(
+  file.path(segmentation_dir, "profils_segments.csv"),
+  check.names = FALSE
+)
+knitr::kable(
+  profiles,
+  digits = 2,
+  caption = "Profils médians sur les variables d'origine et taux de réponse observé"
+)
+```
+
+## Interprétation et limites
+
+- Les segments sont des profils exploratoires, pas des catégories naturelles
+  garanties ni des groupes causaux.
+- Les données manquantes et valeurs extrêmes sont traitées uniquement pour
+  l’ACP et le clustering ; les exports de profils utilisent les données
+  d’origine.
+- La réponse aux campagnes n’a pas influencé la création des segments. Son
+  taux par groupe est descriptif et ne prouve pas une différence causale.
+- Le choix final des segments doit aussi tenir compte de leur taille, de leur
+  stabilité et de leur interprétabilité commerciale.
