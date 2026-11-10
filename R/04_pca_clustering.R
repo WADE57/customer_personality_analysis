@@ -207,10 +207,10 @@ log_features <- c(
 
 # Variables plafonnées aux percentiles 1 et 99
 
-cap_features <- c(
-  "Age_Client",
-  log_features
-)
+# Seules les variables de dépenses sont plafonnées.
+# Le revenu et l'âge ne sont pas plafonnés automatiquement.
+
+cap_features <- spending_features
 
 
 # ------------------------------------------------------------
@@ -300,6 +300,37 @@ for (column in segmentation_features) {
   }
 }
 
+# ------------------------------------------------------------
+# CONTROLE DES VALEURS SUSPECTES
+# ------------------------------------------------------------
+
+# Nombre de revenus déjà manquants dans les données
+original_missing_income <- sum(
+  is.na(predictors$Income)
+)
+
+# Identification des âges supérieurs à 90 ans
+invalid_age <- !is.na(predictors$Age_Client) &
+  predictors$Age_Client > 90
+
+invalid_age_count <- sum(invalid_age)
+
+# Identification du revenu extrême 666666
+invalid_income <- !is.na(predictors$Income) &
+  predictors$Income == 666666
+
+invalid_income_count <- sum(invalid_income)
+
+# Neutralisation dans les variables de travail uniquement
+predictors$Age_Client[invalid_age] <- NA_real_
+
+predictors$Income[invalid_income] <- NA_real_
+
+cat("\nCONTROLE DES VALEURS SUSPECTES\n")
+cat("Âges supérieurs à 90 ans :", invalid_age_count, "\n")
+cat("Revenus égaux à 666666 :", invalid_income_count, "\n")
+cat("Revenus initialement manquants :", original_missing_income, "\n")
+
 
 # ------------------------------------------------------------
 # 7. TRAITEMENT DES VALEURS MANQUANTES
@@ -332,6 +363,21 @@ for (column in imputed_columns) {
   predictors[[column]][
     is.na(predictors[[column]])
   ] <- median_value
+}
+
+cat("\nIMPUTATION DES VALEURS MANQUANTES\n")
+
+for (column in names(missing_counts)) {
+
+  if (missing_counts[[column]] > 0) {
+
+    cat(
+      column, ":",
+      missing_counts[[column]],
+      "valeur(s) imputée(s)\n"
+    )
+
+  }
 }
 
 
@@ -616,6 +662,48 @@ write.csv(
   fileEncoding = "UTF-8"
 )
 
+component_interpretation <- do.call(
+  rbind,
+  lapply(
+    seq_len(n_components),
+    function(component_index) {
+
+      component_name <- paste0("PC", component_index)
+      component_correlations <- correlations[[component_name]]
+      ordered_indices <- order(
+        abs(component_correlations),
+        decreasing = TRUE
+      )
+      top_indices <- ordered_indices[
+        abs(component_correlations[ordered_indices]) >= 0.30
+      ]
+      if (length(top_indices) == 0) {
+        top_indices <- ordered_indices[[1]]
+      }
+      top_indices <- head(top_indices, 3L)
+
+      data.frame(
+        Composante = component_name,
+        Variance_expliquee_pct =
+          variance_explained[[component_index]] * 100,
+        Variable = correlations$Variable[top_indices],
+        Correlation = component_correlations[top_indices],
+        stringsAsFactors = FALSE
+      )
+    }
+  )
+)
+
+write.csv(
+  component_interpretation,
+  file.path(
+    reports_dir,
+    "interpretation_composantes_acp.csv"
+  ),
+  row.names = FALSE,
+  fileEncoding = "UTF-8"
+)
+
 
 # ------------------------------------------------------------
 # 17. GRAPHIQUE DE LA VARIANCE EXPLIQUEE
@@ -784,6 +872,195 @@ best_silhouette <- cluster_candidates[[best_index]]$silhouette
 
 segment <- factor(
   best_fit$cluster
+)
+
+adjusted_rand_index <- function(reference, candidate) {
+
+  contingency <- table(reference, candidate)
+  choose_two <- function(values) {
+    values * (values - 1) / 2
+  }
+
+  pair_count <- choose_two(sum(contingency))
+  if (pair_count == 0) {
+    return(NA_real_)
+  }
+
+  index <- sum(choose_two(contingency))
+  row_pairs <- sum(choose_two(rowSums(contingency)))
+  column_pairs <- sum(choose_two(colSums(contingency)))
+  expected_index <- row_pairs * column_pairs / pair_count
+  maximum_index <- (row_pairs + column_pairs) / 2
+  denominator <- maximum_index - expected_index
+
+  if (denominator == 0) {
+    return(if (index == maximum_index) 1 else NA_real_)
+  }
+
+  (index - expected_index) / denominator
+}
+
+stability_runs <- 100L
+stability_seed <- 2027L
+stability_ari <- numeric(stability_runs)
+
+set.seed(stability_seed)
+for (run in seq_len(stability_runs)) {
+
+  stability_fit <- kmeans(
+    pca_scores,
+    centers = best_k,
+    nstart = 1,
+    iter.max = 100
+  )
+
+  stability_ari[[run]] <- adjusted_rand_index(
+    best_fit$cluster,
+    stability_fit$cluster
+  )
+}
+
+stability_results <- data.frame(
+  Initialisation = seq_len(stability_runs),
+  ARI_vs_partition_reference = stability_ari
+)
+
+write.csv(
+  stability_results,
+  file.path(
+    reports_dir,
+    "stabilite_kmeans_initialisations.csv"
+  ),
+  row.names = FALSE,
+  fileEncoding = "UTF-8"
+)
+
+stability_summary <- data.frame(
+  Nombre_initialisations = stability_runs,
+  Graine = stability_seed,
+  ARI_moyen = mean(stability_ari, na.rm = TRUE),
+  ARI_ecart_type = sd(stability_ari, na.rm = TRUE),
+  ARI_minimum = min(stability_ari, na.rm = TRUE),
+  ARI_quantile_05 = unname(
+    quantile(stability_ari, 0.05, na.rm = TRUE)
+  ),
+  ARI_maximum = max(stability_ari, na.rm = TRUE),
+  Partitions_identiques_pct = mean(
+    stability_ari >= 1 - 1e-12,
+    na.rm = TRUE
+  ) * 100
+)
+
+write.csv(
+  stability_summary,
+  file.path(
+    reports_dir,
+    "resume_stabilite_kmeans.csv"
+  ),
+  row.names = FALSE,
+  fileEncoding = "UTF-8"
+)
+
+subsample_runs <- 100L
+subsample_fraction <- 0.80
+subsample_size <- floor(
+  nrow(pca_scores) * subsample_fraction
+)
+subsample_seed <- 2028L
+subsample_ari <- numeric(subsample_runs)
+subsample_fit_seeds <- integer(subsample_runs)
+pca_score_matrix <- as.matrix(pca_scores)
+
+set.seed(subsample_seed)
+for (run in seq_len(subsample_runs)) {
+
+  subsample_indices <- sample.int(
+    nrow(pca_score_matrix),
+    size = subsample_size,
+    replace = FALSE
+  )
+
+  subsample_fit_seeds[[run]] <- sample.int(
+    .Machine$integer.max,
+    size = 1L
+  )
+
+  set.seed(subsample_fit_seeds[[run]])
+  subsample_fit <- kmeans(
+    pca_score_matrix[subsample_indices, , drop = FALSE],
+    centers = best_k,
+    nstart = 50,
+    iter.max = 100
+  )
+
+  distances_to_centers <- vapply(
+    seq_len(nrow(subsample_fit$centers)),
+    function(cluster_index) {
+
+      differences <- sweep(
+        pca_score_matrix,
+        2,
+        subsample_fit$centers[cluster_index, ],
+        FUN = "-"
+      )
+
+      rowSums(differences^2)
+    },
+    numeric(nrow(pca_score_matrix))
+  )
+
+  predicted_clusters <- max.col(
+    -distances_to_centers,
+    ties.method = "first"
+  )
+
+  subsample_ari[[run]] <- adjusted_rand_index(
+    best_fit$cluster,
+    predicted_clusters
+  )
+}
+
+subsample_results <- data.frame(
+  Repetition = seq_len(subsample_runs),
+  Taille_sous_echantillon = subsample_size,
+  Fraction_clients_pct = subsample_size / nrow(pca_score_matrix) * 100,
+  Graine_kmeans = subsample_fit_seeds,
+  ARI_vs_partition_reference = subsample_ari
+)
+
+write.csv(
+  subsample_results,
+  file.path(
+    reports_dir,
+    "stabilite_sous_echantillonnage.csv"
+  ),
+  row.names = FALSE,
+  fileEncoding = "UTF-8"
+)
+
+subsample_stability_summary <- data.frame(
+  Nombre_repetitions = subsample_runs,
+  Fraction_clients_pct = subsample_size / nrow(pca_score_matrix) * 100,
+  Taille_sous_echantillon = subsample_size,
+  Initialisations_kmeans_par_repetition = 50L,
+  Graine = subsample_seed,
+  ARI_moyen = mean(subsample_ari, na.rm = TRUE),
+  ARI_ecart_type = sd(subsample_ari, na.rm = TRUE),
+  ARI_minimum = min(subsample_ari, na.rm = TRUE),
+  ARI_quantile_05 = unname(
+    quantile(subsample_ari, 0.05, na.rm = TRUE)
+  ),
+  ARI_maximum = max(subsample_ari, na.rm = TRUE)
+)
+
+write.csv(
+  subsample_stability_summary,
+  file.path(
+    reports_dir,
+    "resume_stabilite_sous_echantillonnage.csv"
+  ),
+  row.names = FALSE,
+  fileEncoding = "UTF-8"
 )
 
 
@@ -1144,6 +1421,131 @@ write.csv(
   fileEncoding = "UTF-8"
 )
 
+total_spending <- rowSums(
+  data[
+    ,
+    spending_features,
+    drop = FALSE
+  ],
+  na.rm = TRUE
+)
+overall_median_spending <- median(
+  total_spending,
+  na.rm = TRUE
+)
+overall_response_rate <- mean(
+  data$Response,
+  na.rm = TRUE
+) * 100
+purchase_channels <- c(
+  "Web" = "NumWebPurchases",
+  "Catalogue" = "NumCatalogPurchases",
+  "Magasin" = "NumStorePurchases"
+)
+
+marketing_recommendations <- do.call(
+  rbind,
+  lapply(
+    levels(segment),
+    function(level) {
+
+      rows <- segment == level
+      segment_median_spending <- median(
+        total_spending[rows],
+        na.rm = TRUE
+      )
+      channel_medians <- vapply(
+        purchase_channels,
+        function(variable) {
+          median(
+            data[[variable]][rows],
+            na.rm = TRUE
+          )
+        },
+        numeric(1)
+      )
+      preferred_channel <- names(
+        channel_medians[channel_medians == max(channel_medians)]
+      )
+      preferred_channel <- paste(
+        preferred_channel,
+        collapse = " / "
+      )
+      response_rate <- mean(
+        data$Response[rows],
+        na.rm = TRUE
+      ) * 100
+
+      spending_profile <- if (
+        segment_median_spending > overall_median_spending
+      ) {
+        "au-dessus"
+      } else if (
+        segment_median_spending < overall_median_spending
+      ) {
+        "au-dessous"
+      } else {
+        "au niveau de"
+      }
+
+      spending_action <- if (
+        segment_median_spending > overall_median_spending
+      ) {
+        "Tester une action de fidélisation ou une offre premium."
+      } else if (
+        segment_median_spending < overall_median_spending
+      ) {
+        "Tester une offre de découverte ou de vente croisée."
+      } else {
+        "Tester une campagne généraliste avant de différencier l'offre."
+      }
+
+      response_action <- if (
+        response_rate > overall_response_rate
+      ) {
+        "Prioriser un pilote de campagne sur ce segment."
+      } else if (
+        response_rate < overall_response_rate
+      ) {
+        "Tester plusieurs messages ou incitations avant d'augmenter la pression marketing."
+      } else {
+        "Comparer une campagne de référence et une variante avant de différencier le traitement."
+      }
+
+      data.frame(
+        Segment = level,
+        Depenses_totales_medianes = segment_median_spending,
+        Depenses_totales_medianes_population =
+          overall_median_spending,
+        Niveau_depenses = spending_profile,
+        Canal_achat_median_le_plus_utilise = preferred_channel,
+        Taux_reponse_pct = response_rate,
+        Taux_reponse_population_pct = overall_response_rate,
+        Recommandation = paste(
+          spending_action,
+          paste0(
+            "Adapter le test au canal d'achat médian le plus utilisé : ",
+            preferred_channel,
+            "."
+          ),
+          response_action
+        ),
+        stringsAsFactors = FALSE
+      )
+    }
+  )
+)
+
+write.csv(
+  marketing_recommendations,
+  file.path(
+    reports_dir,
+    "recommandations_marketing.csv"
+  ),
+  row.names = FALSE,
+  fileEncoding = "UTF-8"
+)
+
 
 # ------------------------------------------------------------
 # 26. AFFECTATION DES CLIENTS AUX SEGMENTS
@@ -1322,14 +1724,32 @@ report_lines <- c(
   ),
 
   paste0(
-    "- Revenus manquants imputés par la médiane : **",
-    sum(missing_counts),
-    "** valeur(s)."
+    "- Âges supérieurs à 90 ans traités comme manquants : **",
+    invalid_age_count,
+    "**."
   ),
 
   paste0(
-    "- Les valeurs d'âge, de revenu et de dépenses sont ",
-    "limitées aux percentiles 1 et 99 pour l'analyse."
+    "- Revenus égaux à 666666 traités comme manquants : **",
+    invalid_income_count,
+    "**."
+  ),
+
+  paste0(
+    "- Revenus initialement manquants : **",
+    original_missing_income,
+    "**."
+  ),
+
+  paste0(
+    "- Nombre total de valeurs imputées par médiane : **",
+    sum(missing_counts),
+    "**."
+  ),
+
+  paste0(
+    "- Les variables de dépenses sont plafonnées aux percentiles ",
+    "1 et 99. Le revenu et l'âge ne sont pas plafonnés."
   ),
 
   paste0(
@@ -1434,6 +1854,75 @@ report_lines <- c(
 
   "",
 
+  "### Stabilité selon les initialisations de K-means",
+
+  "",
+
+  paste0(
+    "La partition de référence (K = ",
+    best_k,
+    ") a été comparée à ",
+    stability_runs,
+    " exécutions indépendantes de K-means avec une seule initialisation ",
+    "chacune. L'indice ARI tient compte des permutations d'étiquettes ; ",
+    "1 correspond à des partitions identiques."
+  ),
+
+  "",
+
+  paste(
+    capture.output(
+      print(
+        stability_summary,
+        row.names = FALSE
+      )
+    ),
+    collapse = "\n"
+  ),
+
+  "",
+
+  "### Stabilité par sous-échantillonnage",
+
+  "",
+
+  paste0(
+    "K-means a été réajusté sur ",
+    subsample_runs,
+    " sous-échantillons sans remise contenant ",
+    sprintf(
+      "%.0f",
+      subsample_stability_summary$Fraction_clients_pct[[1]]
+    ),
+    " % des clients (",
+    subsample_size,
+    " clients par répétition), avec 50 initialisations par ajustement. ",
+    "Chaque partition a ensuite été appliquée à tous les clients par ",
+    "affectation au centroïde le plus proche, puis comparée à la partition ",
+    "de référence par ARI."
+  ),
+
+  "",
+
+  "L'imputation, le plafonnement, la standardisation et l'ACP sont maintenus",
+  "fixes. Ce diagnostic mesure donc la sensibilité de K-means à la composition",
+  "de l'échantillon dans l'espace ACP existant ; il ne valide pas toute la",
+  "chaîne de traitement ni la généralisation à une nouvelle population.",
+
+  "",
+
+  paste(
+    capture.output(
+      print(
+        subsample_stability_summary,
+        row.names = FALSE
+      )
+    ),
+    collapse = "\n"
+  ),
+
+  "",
+
   "## 3. Profils des segments",
 
   "",
@@ -1474,7 +1963,60 @@ report_lines <- c(
 
   "",
 
-  "## 5. Limites d'interprétation",
+  "## 5. Interprétation des composantes",
+
+  "",
+
+  "Les variables ci-dessous ont une corrélation absolue d'au moins 0,30",
+  "avec chaque composante (trois variables au maximum). Le signe indique",
+  "le sens de l'association ; il ne s'agit pas d'un effet causal.",
+
+  "",
+
+  paste(
+    capture.output(
+      print(
+        component_interpretation,
+        row.names = FALSE
+      )
+    ),
+    collapse = "\n"
+  ),
+
+  "",
+
+  "## 6. Recommandations marketing à tester",
+
+  "",
+
+  paste0(
+    "Les recommandations sont générées à partir des dépenses totales ",
+    "médianes, du canal d'achat médian le plus utilisé et du taux de ",
+    "réponse observé dans chaque segment. Elles sont comparées aux ",
+    "médianes ou taux globaux."
+  ),
+
+  "",
+
+  paste(
+    capture.output(
+      print(
+        marketing_recommendations,
+        row.names = FALSE
+      )
+    ),
+    collapse = "\n"
+  ),
+
+  "",
+
+  "Ces recommandations sont des hypothèses descriptives à évaluer par des",
+  "tests marketing contrôlés. Les écarts observés ne démontrent ni causalité",
+  "ni efficacité future.",
+
+  "",
+
+  "## 7. Limites d'interprétation",
 
   "",
 
@@ -1484,7 +2026,7 @@ report_lines <- c(
 
   "- Le choix du nombre de clusters dépend des variables et de la méthode retenues.",
 
-  "- Les valeurs extrêmes ont été plafonnées uniquement pour l'ACP et le clustering.",
+  "- Seules les variables de dépenses sont plafonnées aux percentiles 1 et 99 pour l'ACP et le clustering.",
 
   "- Les profils sont descriptifs et ne permettent pas d'établir des relations causales.",
 
@@ -1492,7 +2034,7 @@ report_lines <- c(
 
   "",
 
-  "## 6. Figures",
+  "## 8. Figures",
 
   "",
 
@@ -1508,7 +2050,7 @@ report_lines <- c(
 
   "",
 
-  "## 7. Fichiers de résultats",
+  "## 9. Fichiers de résultats",
 
   "",
 
@@ -1517,6 +2059,18 @@ report_lines <- c(
   "- `reports/segmentation/contributions_variables_acp.csv`",
 
   "- `reports/segmentation/correlations_variables_composantes.csv`",
+
+  "- `reports/segmentation/interpretation_composantes_acp.csv`",
+
+  "- `reports/segmentation/recommandations_marketing.csv`",
+
+  "- `reports/segmentation/resume_stabilite_kmeans.csv`",
+
+  "- `reports/segmentation/stabilite_kmeans_initialisations.csv`",
+
+  "- `reports/segmentation/resume_stabilite_sous_echantillonnage.csv`",
+
+  "- `reports/segmentation/stabilite_sous_echantillonnage.csv`",
 
   "- `reports/segmentation/selection_nombre_clusters.csv`",
 
@@ -1600,6 +2154,30 @@ cat(
     silhouette_scores$Silhouette_moyenne[[best_index]],
     3
   ),
+  "\n"
+)
+
+cat(
+  "ARI moyen sur",
+  stability_runs,
+  "initialisations :",
+  round(stability_summary$ARI_moyen[[1]], 3),
+  "\n"
+)
+
+cat(
+  "ARI minimum :",
+  round(stability_summary$ARI_minimum[[1]], 3),
+  "| Partitions identiques :",
+  round(stability_summary$Partitions_identiques_pct[[1]], 1),
+  "%\n"
+)
+
+cat(
+  "ARI moyen sur les sous-échantillons :",
+  round(subsample_stability_summary$ARI_moyen[[1]], 3),
+  "| Minimum :",
+  round(subsample_stability_summary$ARI_minimum[[1]], 3),
   "\n"
 )
 

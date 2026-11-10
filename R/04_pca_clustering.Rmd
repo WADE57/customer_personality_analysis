@@ -83,11 +83,12 @@ knitr::kable(
 )
 ```
 
-Les revenus manquants sont imputés par la médiane pour l’ACP et le
-clustering. Les valeurs d’âge, de revenu et de dépenses sont limitées aux
-percentiles 1 et 99, puis les revenus et dépenses transformés avec `log1p`.
-Toutes les variables utilisées sont centrées-réduites. Ces opérations
-s’appliquent aux analyses, sans modifier le CSV préparé.
+Les âges supérieurs à 90 ans et le revenu égal à 666666 sont traités comme
+manquants dans les variables d’analyse. Les valeurs manquantes sont imputées
+par la médiane. Seules les six variables de dépenses sont plafonnées aux
+percentiles 1 et 99 ; le revenu et les dépenses sont ensuite transformés avec
+`log1p`. Toutes les variables utilisées sont centrées-réduites. Ces
+opérations s’appliquent aux analyses, sans modifier le CSV préparé.
 
 ## Analyse en composantes principales
 
@@ -113,6 +114,22 @@ knitr::kable(
   head(variance, 10),
   digits = 2,
   caption = "Variance expliquée par les premières composantes"
+)
+```
+
+Les variables suivantes ont une corrélation absolue d'au moins 0,30 avec
+chaque composante retenue (trois variables au maximum). Le signe indique le
+sens de l'association, sans établir de causalité.
+
+```{r pca-interpretation, echo=FALSE}
+component_interpretation <- read.csv(
+  file.path(segmentation_dir, "interpretation_composantes_acp.csv"),
+  check.names = FALSE
+)
+knitr::kable(
+  component_interpretation,
+  digits = 3,
+  caption = "Variables les plus associées à chaque composante"
 )
 ```
 
@@ -152,6 +169,55 @@ knitr::include_graphics("../figures/segmentation/02_selection_clusters.png")
 knitr::include_graphics("../figures/segmentation/03_diagnostic_silhouette.png")
 ```
 
+### Stabilité selon les initialisations de K-means
+
+La partition retenue est comparée à 100 exécutions de K-means avec une
+initialisation chacune. L'indice de Rand ajusté (ARI) est invariant à la
+permutation des étiquettes : 1 correspond à des partitions identiques.
+
+```{r cluster-stability, echo=FALSE}
+stability <- read.csv(
+  file.path(segmentation_dir, "resume_stabilite_kmeans.csv"),
+  check.names = FALSE
+)
+knitr::kable(
+  stability,
+  digits = 3,
+  caption = "Stabilité de la partition selon les initialisations"
+)
+```
+
+Cette analyse mesure la sensibilité à l'initialisation sur les données et les
+variables actuelles ; elle ne mesure pas la stabilité sur de nouveaux
+échantillons.
+
+### Stabilité par sous-échantillonnage
+
+K-means est réajusté sur 100 sous-échantillons sans remise contenant 80 % des
+clients, avec 50 initialisations par ajustement. Chaque modèle est utilisé
+pour affecter tous les clients au centroïde le plus proche ; ces affectations
+sont comparées à la partition de référence par ARI.
+
+```{r cluster-subsampling-stability, echo=FALSE}
+subsample_stability <- read.csv(
+  file.path(
+    segmentation_dir,
+    "resume_stabilite_sous_echantillonnage.csv"
+  ),
+  check.names = FALSE
+)
+knitr::kable(
+  subsample_stability,
+  digits = 3,
+  caption = "Stabilité de K-means après sous-échantillonnage des clients"
+)
+```
+
+Cette analyse conserve fixes le prétraitement et l'ACP calculés sur l'ensemble
+des clients. Elle évalue donc la sensibilité de K-means à la composition de
+l'échantillon dans cet espace ACP, et non la stabilité de toute la chaîne de
+traitement ou sa généralisation à une nouvelle population.
+
 ```{r cluster-map, echo=FALSE, fig.cap="Clients représentés sur les deux premières composantes, colorés par segment."}
 knitr::include_graphics("../figures/segmentation/04_segments_plan_acp.png")
 ```
@@ -183,6 +249,25 @@ knitr::kable(
 )
 ```
 
+## Recommandations marketing à tester
+
+Les pistes ci-dessous sont générées à partir des dépenses totales médianes,
+du canal d'achat médian le plus utilisé et du taux de réponse observé dans
+chaque segment, comparés aux valeurs globales. Elles servent à formuler des
+hypothèses de ciblage ; elles ne démontrent ni causalité ni efficacité future.
+
+```{r marketing-recommendations, echo=FALSE}
+recommendations <- read.csv(
+  file.path(segmentation_dir, "recommandations_marketing.csv"),
+  check.names = FALSE
+)
+knitr::kable(
+  recommendations,
+  digits = 2,
+  caption = "Pistes marketing fondées sur les profils observés"
+)
+```
+
 ## Interprétation et limites
 
 - Les segments sont des profils exploratoires, pas des catégories naturelles
@@ -194,3 +279,7 @@ knitr::kable(
   taux par groupe est descriptif et ne prouve pas une différence causale.
 - Le choix final des segments doit aussi tenir compte de leur taille, de leur
   stabilité et de leur interprétabilité commerciale.
+- Le diagnostic de stabilité compare les initialisations sur le même jeu de
+  données ; il ne remplace pas une validation sur des échantillons distincts.
+- Le sous-échantillonnage teste la sensibilité à la composition des clients,
+  conditionnellement au prétraitement et à l'ACP déjà calculés sur l'ensemble.
