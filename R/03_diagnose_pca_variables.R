@@ -31,19 +31,20 @@ dir.create(reports_dir, recursive = TRUE, showWarnings = FALSE)
 segmentation_variables <- c(
   "Age_Client",
   "Income",
-  "Nb_Enfants_Foyer",
+  "Kidhome",
+  "Teenhome",
   "Recency",
-  "NumDealsPurchases",
-  "NumWebVisitsMonth",
   "MntWines",
   "MntFruits",
   "MntMeatProducts",
   "MntFishProducts",
   "MntSweetProducts",
   "MntGoldProds",
+  "NumDealsPurchases",
   "NumWebPurchases",
   "NumCatalogPurchases",
-  "NumStorePurchases"
+  "NumStorePurchases",
+  "NumWebVisitsMonth"
 )
 
 data <- read.csv(
