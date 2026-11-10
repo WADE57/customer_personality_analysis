@@ -1,0 +1,31 @@
+"Variable","Modalite","Segment","Nombre_clients","Pourcentage_segment"
+"Response","0","1",1002,89.3844781445138
+"Response","1","1",119,10.6155218554862
+"Response","0","2",904,80.7864164432529
+"Response","1","2",215,19.2135835567471
+"Education","2n Cycle","1",112,9.99107939339875
+"Education","Basic","1",52,4.63871543264942
+"Education","Graduation","1",530,47.2792149866191
+"Education","Master","1",195,17.3951828724353
+"Education","PhD","1",232,20.6958073148974
+"Education","2n Cycle","2",91,8.13226094727435
+"Education","Basic","2",2,0.178731009830206
+"Education","Graduation","2",597,53.3512064343164
+"Education","Master","2",175,15.638963360143
+"Education","PhD","2",254,22.6988382484361
+"Marital_Status","Absurd","1",0,0
+"Marital_Status","Alone","1",3,0.267618198037467
+"Marital_Status","Divorced","1",113,10.0802854594112
+"Marital_Status","Married","1",441,39.3398751115076
+"Marital_Status","Single","1",246,21.9446922390723
+"Marital_Status","Together","1",288,25.6913470115968
+"Marital_Status","Widow","1",28,2.49776984834969
+"Marital_Status","YOLO","1",2,0.178412132024978
+"Marital_Status","Absurd","2",2,0.178731009830206
+"Marital_Status","Alone","2",0,0
+"Marital_Status","Divorced","2",119,10.6344950848972
+"Marital_Status","Married","2",423,37.8016085790885
+"Marital_Status","Single","2",234,20.911528150134
+"Marital_Status","Together","2",292,26.09472743521
+"Marital_Status","Widow","2",49,4.37890974084004
+"Marital_Status","YOLO","2",0,0

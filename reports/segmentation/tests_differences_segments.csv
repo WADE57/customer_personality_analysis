@@ -1,0 +1,20 @@
+"Variable","Type","Test","N_segment_1","N_segment_2","Mediane_segment_1","Mediane_segment_2","Difference_medianes","Statistique","Taille_effet","Mesure_taille_effet","P_value","P_value_Holm"
+"Kidhome","Quantitative","Wilcoxon-Mann-Whitney",1121,1119,1,0,1,1016433.5,0.62059041820027,"Delta de Cliff (segment 1 vs 2)",2.2250738585072e-308,4.22764033116368e-307
+"MntMeatProducts","Quantitative","Wilcoxon-Mann-Whitney",1121,1119,16,231,-215,28844,-0.954011442930041,"Delta de Cliff (segment 1 vs 2)",2.2250738585072e-308,4.22764033116368e-307
+"NumCatalogPurchases","Quantitative","Wilcoxon-Mann-Whitney",1121,1119,0,4,-4,51155.5,-0.918438232173336,"Delta de Cliff (segment 1 vs 2)",2.2250738585072e-308,4.22764033116368e-307
+"NumWebVisitsMonth","Quantitative","Wilcoxon-Mann-Whitney",1121,1119,7,4,3,1001445.5,0.596693715476495,"Delta de Cliff (segment 1 vs 2)",2.2250738585072e-308,4.22764033116368e-307
+"MntWines","Quantitative","Wilcoxon-Mann-Whitney",1121,1119,24,491,-467,60819,-0.903030853819239,"Delta de Cliff (segment 1 vs 2)",9.24777894200243e-300,1.38716684130036e-298
+"NumStorePurchases","Quantitative","Wilcoxon-Mann-Whitney",1121,1119,3,8,-5,65963.5,-0.894828519474266,"Delta de Cliff (segment 1 vs 2)",2.27271915787278e-299,3.1818068210219e-298
+"Income","Quantitative","Wilcoxon-Mann-Whitney",1105,1110,35765,68211,-32446,61077.5,-0.900407647466471,"Delta de Cliff (segment 1 vs 2)",1.02369606439721e-294,1.33080488371637e-293
+"MntFishProducts","Quantitative","Wilcoxon-Mann-Whitney",1121,1119,3,50,-47,120726.5,-0.807514993235805,"Delta de Cliff (segment 1 vs 2)",1.60433776258649e-241,1.92520531510379e-240
+"MntFruits","Quantitative","Wilcoxon-Mann-Whitney",1121,1119,2,32,-30,133369,-0.78735792997284,"Delta de Cliff (segment 1 vs 2)",6.86508669450243e-230,7.55159536395267e-229
+"MntSweetProducts","Quantitative","Wilcoxon-Mann-Whitney",1121,1119,2,33,-31,139801.5,-0.777102022562199,"Delta de Cliff (segment 1 vs 2)",3.62090915857584e-224,3.62090915857584e-223
+"NumWebPurchases","Quantitative","Wilcoxon-Mann-Whitney",1121,1119,2,5,-3,159808.5,-0.745203081316232,"Delta de Cliff (segment 1 vs 2)",4.01912916058071e-208,3.61721624452264e-207
+"MntGoldProds","Quantitative","Wilcoxon-Mann-Whitney",1121,1119,10,53,-43,173246,-0.723778478777486,"Delta de Cliff (segment 1 vs 2)",2.23930142734824e-193,1.79144114187859e-192
+"Age_Client","Quantitative","Wilcoxon-Mann-Whitney",1119,1118,42,47,-5,503874.5,-0.194472287900806,"Delta de Cliff (segment 1 vs 2)",1.63213970698485e-15,1.1424977948894e-14
+"Education","Categorielle","Chi-deux de Pearson",1121,1119,NA,NA,NA,54.5270747810278,0.156020652795305,"V de Cramer",4.08152696651267e-11,2.4489161799076e-10
+"Response","Categorielle","Chi-deux de Pearson",1121,1119,NA,NA,NA,32.6298794332153,0.120693456580118,"V de Cramer",1.1148758258851e-08,5.57437912942548e-08
+"NumDealsPurchases","Quantitative","Wilcoxon-Mann-Whitney",1121,1119,2,1,1,672302.5,0.0719117282459569,"Delta de Cliff (segment 1 vs 2)",0.0019489475968979,0.00779579038759159
+"Marital_Status","Categorielle","Chi-deux simule (10 000 repetitions)",1121,1119,NA,NA,NA,13.5832564621656,0.0778713925504898,"V de Cramer",0.038996100389961,0.116988301169883
+"Teenhome","Quantitative","Wilcoxon-Mann-Whitney",1121,1119,0,0,0,631611.5,0.00703444438332612,"Delta de Cliff (segment 1 vs 2)",0.741683692389224,1
+"Recency","Quantitative","Wilcoxon-Mann-Whitney",1121,1119,49,50,-1,620199.5,-0.0111607231829745,"Delta de Cliff (segment 1 vs 2)",0.647423245049183,1

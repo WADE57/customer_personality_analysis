@@ -257,6 +257,35 @@ augmente rapidement sur des jeux de données beaucoup plus grands.
 knitr::include_graphics("../figures/segmentation/03_diagnostic_silhouette.png")
 ```
 
+Le tableau ci-dessous décrit les silhouettes individuelles par segment :
+quantiles, médiane et proportions de valeurs négatives ou proches de zéro.
+Une silhouette négative signale une affectation à examiner, sans constituer
+à elle seule la preuve d'une erreur de segmentation.
+
+```{r silhouette-by-segment, echo=FALSE}
+silhouette_by_segment <- read.csv(
+  file.path(segmentation_dir, "diagnostic_silhouette_segments.csv"),
+  check.names = FALSE
+)
+knitr::kable(
+  silhouette_by_segment,
+  digits = 3,
+  caption = "Distribution des silhouettes individuelles par segment"
+)
+```
+
+```{r individual-silhouette-figure, echo=FALSE, fig.cap="Silhouettes de chaque client, triées dans chaque segment. La ligne rouge marque zéro et la ligne orange le seuil exploratoire de 0,10."}
+knitr::include_graphics(
+  "../figures/segmentation/10_silhouettes_individuelles.png"
+)
+```
+
+Les valeurs individuelles avec l'identifiant du client, son segment et son
+segment voisin sont disponibles dans
+`reports/segmentation/silhouettes_individuelles.csv`. La liste des clients
+dont la silhouette est inférieure ou égale à 0,10 est également exportée
+avec leurs caractéristiques dans `clients_proches_frontiere.csv`.
+
 ### Stabilité selon les initialisations de K-means
 
 La partition retenue est comparée à 100 exécutions de K-means avec une
@@ -306,6 +335,93 @@ des clients. Elle évalue donc la sensibilité de K-means à la composition de
 l'échantillon dans cet espace ACP, et non la stabilité de toute la chaîne de
 traitement ou sa généralisation à une nouvelle population.
 
+### Validation sur un échantillon mis de côté
+
+Une validation complémentaire réserve 20 % des clients avant le
+prétraitement. Les médianes d'imputation, seuils de plafonnement,
+paramètres de standardisation, ACP, nombre de groupes et centroïdes sont
+estimés uniquement sur les 80 % d'entraînement. Le test est transformé avec
+ces paramètres, puis affecté aux centroïdes appris sans réajuster le modèle.
+
+```{r holdout-validation, echo=FALSE}
+holdout <- read.csv(
+  file.path(segmentation_dir, "validation_echantillon_mis_de_cote.csv"),
+  check.names = FALSE
+)
+knitr::kable(
+  holdout,
+  digits = 3,
+  caption = "Silhouette sur l'entraînement et le test mis de côté"
+)
+
+holdout_profiles <- read.csv(
+  file.path(segmentation_dir, "profils_segments_test_independant.csv"),
+  check.names = FALSE
+)
+knitr::kable(
+  holdout_profiles,
+  digits = 2,
+  caption = "Profils observés dans le test, par centroïde appris sur l'entraînement"
+)
+```
+
+Le test est une partie mise de côté du même jeu de données : il évalue la
+reproductibilité sur des clients non utilisés pour ajuster ce modèle, mais
+ne remplace pas une validation externe sur une autre période ou population.
+Les affectations individuelles du test sont exportées dans
+`affectations_test_independant.csv`.
+
+La silhouette de validation est calculée à partir des distances entre les
+clients du test uniquement, avec leurs affectations fixées par les centroïdes
+appris sur l'entraînement. Elle ne représente donc pas une distance entre
+chaque client du test et l'ensemble des clients d'entraînement.
+
+### Clients proches de la frontière
+
+Une silhouette inférieure ou égale à 0,10 sert ici de seuil exploratoire
+pour repérer les affectations proches de la frontière ; ce seuil n'est pas
+une règle universelle. Les silhouettes négatives indiquent que les clients
+sont, selon cette mesure, plus proches d'un autre groupe. Les chiffres de
+cette section et la figure des silhouettes individuelles concernent la
+segmentation initiale de l'ensemble des clients, et non le sous-échantillon
+de test de la validation 80/20.
+
+```{r boundary-summary, echo=FALSE}
+boundary_summary <- read.csv(
+  file.path(segmentation_dir, "resume_clients_proches_frontiere.csv"),
+  check.names = FALSE
+)
+knitr::kable(
+  boundary_summary,
+  digits = 2,
+  caption = "Résumé des silhouettes proches de zéro ou négatives"
+)
+
+boundary_clients <- read.csv(
+  file.path(segmentation_dir, "clients_proches_frontiere.csv"),
+  check.names = FALSE
+)
+boundary_columns <- c(
+  "ID", "Segment", "Segment_voisin", "Silhouette", "Income",
+  "MntWines", "MntMeatProducts", "NumWebPurchases",
+  "NumStorePurchases", "Response"
+)
+knitr::kable(
+  head(boundary_clients[boundary_columns], 20),
+  digits = 3,
+  caption = "Jusqu'à 20 clients les plus proches de la frontière ; liste complète dans le CSV"
+)
+```
+
+Dans cette partition, **`r boundary_summary$Nombre_clients_proches_frontiere[[1]]`
+clients (`r sprintf("%.2f", boundary_summary$Pourcentage_clients_proches_frontiere[[1]])` %)
+ont une silhouette inférieure ou égale à 0,10**, et
+**`r boundary_summary$Nombre_silhouettes_negatives[[1]]`
+(`r sprintf("%.2f", boundary_summary$Pourcentage_silhouettes_negatives[[1]])` %)
+ont une silhouette négative**. Ces derniers sont à examiner en priorité.
+Le seuil de 0,10 est exploratoire : il aide à sélectionner des cas, mais ne
+constitue pas une frontière statistique universelle.
+
 ```{r cluster-map, echo=FALSE, fig.cap="Clients représentés sur les deux premières composantes, colorés par segment."}
 knitr::include_graphics("../figures/segmentation/04_segments_plan_acp.png")
 ```
@@ -334,6 +450,136 @@ knitr::kable(
   profiles,
   digits = 2,
   caption = "Profils médians sur les variables d'origine et taux de réponse observé"
+)
+```
+
+## Distributions et comparaison descriptive des segments
+
+Les descriptifs neutralisent, sans modifier les données originales, les âges
+supérieurs à 90 ans et le revenu égal à 666666. Les variables numériques sont
+résumées par segment avec moyenne, écart-type, médiane, quartiles et
+pourcentage de zéros. Les boîtes à moustaches et les fonctions de répartition
+empirique complètent les médianes afin de montrer la dispersion et
+l'asymétrie.
+
+```{r quantitative-distributions, echo=FALSE}
+quantitative_distributions <- read.csv(
+  file.path(
+    segmentation_dir,
+    "distributions_quantitatives_segments.csv"
+  ),
+  check.names = FALSE
+)
+knitr::kable(
+  quantitative_distributions,
+  digits = 2,
+  caption = "Statistiques descriptives des variables quantitatives par segment"
+)
+```
+
+```{r quantitative-boxplots, echo=FALSE, fig.cap="Boîtes à moustaches par segment ; les échelles verticales sont propres à chaque variable."}
+knitr::include_graphics(
+  "../figures/segmentation/11_distributions_quantitatives_segments.png"
+)
+```
+
+```{r quantitative-ecdf, echo=FALSE, fig.cap="Fonctions de répartition empirique des variables quantitatives par segment."}
+knitr::include_graphics(
+  "../figures/segmentation/12_distributions_cumulees_segments.png"
+)
+```
+
+Pour les variables quantitatives, le test de Wilcoxon-Mann-Whitney compare
+les rangs des deux groupes et le delta de rangs de Cliff donne une mesure
+d'effet. Pour la réponse, le niveau d'éducation et le statut matrimonial,
+les distributions sont comparées par chi-deux ; une p-value simulée est
+utilisée si les effectifs théoriques sont faibles. Les p-values sont
+corrigées par la méthode de Holm sur l'ensemble des comparaisons.
+Les tailles d'effet numériques sont orientées « segment 1 versus segment 2 » :
+un delta négatif indique des valeurs généralement plus élevées dans le
+segment 2. Les p-values plus petites que la précision numérique disponible
+sont enregistrées à la limite machine et ne doivent pas être interprétées
+comme exactement nulles.
+
+Ces tests restent exploratoires et descriptifs : les variables quantitatives
+ont participé à la construction de K-means, de sorte que leurs écarts ne
+constituent pas une validation indépendante des segments. Les p-values ne
+démontrent ni causalité ni utilité marketing.
+
+```{r distribution-tests, echo=FALSE}
+distribution_tests <- read.csv(
+  file.path(segmentation_dir, "tests_differences_segments.csv"),
+  check.names = FALSE
+)
+distribution_tests$P_value <- format.pval(
+  distribution_tests$P_value,
+  digits = 3,
+  eps = 1e-4
+)
+distribution_tests$P_value_Holm <- format.pval(
+  distribution_tests$P_value_Holm,
+  digits = 3,
+  eps = 1e-4
+)
+knitr::kable(
+  distribution_tests,
+  digits = 4,
+  caption = "Comparaisons exploratoires entre segments et tailles d'effet"
+)
+
+categorical_distributions <- read.csv(
+  file.path(
+    segmentation_dir,
+    "distributions_categorielles_segments.csv"
+  ),
+  check.names = FALSE
+)
+knitr::kable(
+  categorical_distributions,
+  digits = 2,
+  caption = "Effectifs et pourcentages des modalités par segment"
+)
+
+format_segment_median <- function(variable, cluster) {
+  value <- quantitative_distributions$Mediane[
+    quantitative_distributions$Variable == variable &
+      quantitative_distributions$Segment == cluster
+  ]
+  format(
+    round(value[[1]], 2),
+    big.mark = " ",
+    decimal.mark = ",",
+    trim = TRUE
+  )
+}
+response_yes_pct <- categorical_distributions$Pourcentage_segment[
+  categorical_distributions$Variable == "Response" &
+    categorical_distributions$Modalite == "1"
+]
+```
+
+Dans les données analysées, le segment 2 présente un revenu médian de
+`r format_segment_median("Income", "2")` contre
+`r format_segment_median("Income", "1")` pour le segment 1 ; les dépenses
+médianes en vin sont respectivement de
+`r format_segment_median("MntWines", "2")` et
+`r format_segment_median("MntWines", "1")`. Le segment 2 achète aussi plus
+souvent en magasin (médianes :
+`r format_segment_median("NumStorePurchases", "2")` contre
+`r format_segment_median("NumStorePurchases", "1")`), tandis que les visites
+web mensuelles médianes sont
+`r format_segment_median("NumWebVisitsMonth", "2")` contre
+`r format_segment_median("NumWebVisitsMonth", "1")`. La récence médiane est
+proche (`r format_segment_median("Recency", "1")` contre
+`r format_segment_median("Recency", "2")` jours). Le taux descriptif de
+réponse à une campagne est de
+`r sprintf("%.2f", response_yes_pct[[1]])` % dans le segment 1 et
+`r sprintf("%.2f", response_yes_pct[[2]])` % dans le segment 2. Ces écarts
+décrivent les groupes sur cet échantillon ; ils n'impliquent pas de causalité.
+
+```{r categorical-distributions-figure, echo=FALSE, fig.cap="Répartition de la réponse, de l'éducation et du statut matrimonial dans chaque segment."}
+knitr::include_graphics(
+  "../figures/segmentation/13_distributions_categorielles_segments.png"
 )
 ```
 

@@ -1390,7 +1390,337 @@ write.csv(
 
 
 # ------------------------------------------------------------
-# 20. DIAGNOSTIC DETAILLE DES SILHOUETTES
+# 20. VALIDATION SUR UN ECHANTILLON MIS DE COTE
+# ------------------------------------------------------------
+
+set.seed(2029)
+validation_test_indices <- sample.int(
+  nrow(data),
+  size = floor(nrow(data) * 0.20),
+  replace = FALSE
+)
+validation_train_indices <- setdiff(
+  seq_len(nrow(data)),
+  validation_test_indices
+)
+validation_train_data <- data[
+  validation_train_indices,
+  ,
+  drop = FALSE
+]
+validation_test_data <- data[
+  validation_test_indices,
+  ,
+  drop = FALSE
+]
+
+fit_validation_preprocessing <- function(training_data) {
+
+  values <- training_data[
+    ,
+    segmentation_features,
+    drop = FALSE
+  ]
+  values$Age_Client[
+    !is.na(values$Age_Client) & values$Age_Client > 90
+  ] <- NA_real_
+  values$Income[
+    !is.na(values$Income) & values$Income == 666666
+  ] <- NA_real_
+
+  medians <- vapply(
+    values,
+    median,
+    numeric(1),
+    na.rm = TRUE
+  )
+  if (any(!is.finite(medians))) {
+    stop("Impossible d'estimer les médianes de prétraitement sur l'entraînement.")
+  }
+  for (column in segmentation_features) {
+    values[[column]][is.na(values[[column]])] <- medians[[column]]
+  }
+
+  cap_bounds <- t(vapply(
+    cap_features,
+    function(column) {
+      quantile(
+        values[[column]],
+        probs = c(0.01, 0.99),
+        names = FALSE
+      )
+    },
+    numeric(2)
+  ))
+  colnames(cap_bounds) <- c("minimum", "maximum")
+
+  for (column in cap_features) {
+    values[[column]] <- pmin(
+      pmax(values[[column]], cap_bounds[column, "minimum"]),
+      cap_bounds[column, "maximum"]
+    )
+  }
+  for (column in log_features) {
+    values[[column]] <- log1p(values[[column]])
+  }
+
+  centers <- vapply(values, mean, numeric(1))
+  scales <- vapply(values, sd, numeric(1))
+  if (any(!is.finite(scales) | scales == 0)) {
+    stop("Prétraitement d'entraînement invalide : variable sans variance.")
+  }
+
+  list(
+    medians = medians,
+    cap_bounds = cap_bounds,
+    centers = centers,
+    scales = scales
+  )
+}
+
+apply_validation_preprocessing <- function(input_data, preprocessing) {
+
+  values <- input_data[
+    ,
+    segmentation_features,
+    drop = FALSE
+  ]
+  values$Age_Client[
+    !is.na(values$Age_Client) & values$Age_Client > 90
+  ] <- NA_real_
+  values$Income[
+    !is.na(values$Income) & values$Income == 666666
+  ] <- NA_real_
+
+  for (column in segmentation_features) {
+    values[[column]][
+      is.na(values[[column]])
+    ] <- preprocessing$medians[[column]]
+  }
+  for (column in cap_features) {
+    values[[column]] <- pmin(
+      pmax(
+        values[[column]],
+        preprocessing$cap_bounds[column, "minimum"]
+      ),
+      preprocessing$cap_bounds[column, "maximum"]
+    )
+  }
+  for (column in log_features) {
+    values[[column]] <- log1p(values[[column]])
+  }
+
+  values <- sweep(values, 2, preprocessing$centers, FUN = "-")
+  values <- sweep(values, 2, preprocessing$scales, FUN = "/")
+
+  if (any(!is.finite(as.matrix(values)))) {
+    stop("Le prétraitement a produit des valeurs non finies.")
+  }
+  values
+}
+
+validation_preprocessing <- fit_validation_preprocessing(
+  validation_train_data
+)
+validation_train_matrix <- apply_validation_preprocessing(
+  validation_train_data,
+  validation_preprocessing
+)
+validation_test_matrix <- apply_validation_preprocessing(
+  validation_test_data,
+  validation_preprocessing
+)
+validation_pca <- prcomp(
+  validation_train_matrix,
+  center = FALSE,
+  scale. = FALSE
+)
+validation_variance <- validation_pca$sdev^2 /
+  sum(validation_pca$sdev^2)
+validation_cumulative_variance <- cumsum(validation_variance)
+validation_n_components <- min(
+  which(validation_cumulative_variance >= 0.80)[1],
+  10L,
+  ncol(validation_pca$x)
+)
+validation_train_scores <- validation_pca$x[
+  ,
+  seq_len(validation_n_components),
+  drop = FALSE
+]
+validation_test_scores <- predict(
+  validation_pca,
+  newdata = validation_test_matrix
+)[
+  ,
+  seq_len(validation_n_components),
+  drop = FALSE
+]
+
+validation_candidate_k <- 2:min(
+  8L,
+  nrow(validation_train_scores) - 1L
+)
+validation_train_distances <- dist(validation_train_scores)
+set.seed(2030)
+validation_candidates <- lapply(
+  validation_candidate_k,
+  function(k) {
+    fit <- kmeans(
+      validation_train_scores,
+      centers = k,
+      nstart = 50,
+      iter.max = 100
+    )
+    silhouette <- cluster::silhouette(
+      fit$cluster,
+      validation_train_distances
+    )
+    list(
+      fit = fit,
+      silhouette = silhouette,
+      average_silhouette = mean(silhouette[, "sil_width"])
+    )
+  }
+)
+validation_best_index <- which.max(vapply(
+  validation_candidates,
+  function(candidate) candidate$average_silhouette,
+  numeric(1)
+))
+validation_best_k <- validation_candidate_k[[validation_best_index]]
+validation_train_fit <- validation_candidates[[validation_best_index]]$fit
+validation_train_silhouette <-
+  validation_candidates[[validation_best_index]]$silhouette
+
+validation_squared_distances <- vapply(
+  seq_len(nrow(validation_train_fit$centers)),
+  function(cluster_index) {
+    differences <- sweep(
+      validation_test_scores,
+      2,
+      validation_train_fit$centers[cluster_index, ],
+      FUN = "-"
+    )
+    rowSums(differences^2)
+  },
+  numeric(nrow(validation_test_scores))
+)
+validation_test_clusters <- max.col(
+  -validation_squared_distances,
+  ties.method = "first"
+)
+if (length(unique(validation_test_clusters)) < 2L) {
+  stop(
+    "La partition de test ne contient pas au moins deux segments. ",
+    "La silhouette de validation ne peut pas être calculée."
+  )
+}
+validation_test_silhouette <- cluster::silhouette(
+  validation_test_clusters,
+  dist(validation_test_scores)
+)
+
+validation_summary <- data.frame(
+  Echantillon = c("Entrainement", "Test mis de cote"),
+  Nombre_clients = c(
+    nrow(validation_train_data),
+    nrow(validation_test_data)
+  ),
+  Pourcentage_clients = c(
+    nrow(validation_train_data),
+    nrow(validation_test_data)
+  ) / nrow(data) * 100,
+  Nombre_composantes = validation_n_components,
+  Variance_cumulee_pct =
+    validation_cumulative_variance[validation_n_components] * 100,
+  K_retenu = validation_best_k,
+  Silhouette_moyenne = c(
+    mean(validation_train_silhouette[, "sil_width"]),
+    mean(validation_test_silhouette[, "sil_width"])
+  ),
+  Graine_decoupage = 2029L,
+  stringsAsFactors = FALSE
+)
+write.csv(
+  validation_summary,
+  file.path(reports_dir, "validation_echantillon_mis_de_cote.csv"),
+  row.names = FALSE,
+  fileEncoding = "UTF-8"
+)
+
+validation_test_assignments <- data.frame(
+  ID = validation_test_data$ID,
+  Segment_entraine = validation_test_clusters,
+  Silhouette_test = validation_test_silhouette[, "sil_width"]
+)
+write.csv(
+  validation_test_assignments,
+  file.path(reports_dir, "affectations_test_independant.csv"),
+  row.names = FALSE,
+  fileEncoding = "UTF-8"
+)
+
+validation_profile_data <- validation_test_data
+validation_profile_data$Age_Client[
+  !is.na(validation_profile_data$Age_Client) &
+    validation_profile_data$Age_Client > 90
+] <- NA_real_
+validation_profile_data$Income[
+  !is.na(validation_profile_data$Income) &
+    validation_profile_data$Income == 666666
+] <- NA_real_
+
+validation_profile_variables <- c(
+  "Age_Client",
+  "Income",
+  "Kidhome",
+  "Teenhome",
+  "Recency",
+  spending_features,
+  "NumDealsPurchases",
+  "NumWebPurchases",
+  "NumCatalogPurchases",
+  "NumStorePurchases",
+  "NumWebVisitsMonth"
+)
+validation_profiles <- do.call(
+  rbind,
+  lapply(
+    seq_len(validation_best_k),
+    function(cluster_index) {
+      rows <- validation_test_clusters == cluster_index
+      data.frame(
+        Segment_entraine = cluster_index,
+        Nombre_clients = sum(rows),
+        lapply(
+          validation_profile_data[
+            rows,
+            validation_profile_variables,
+            drop = FALSE
+          ],
+          median,
+          na.rm = TRUE
+        ),
+        Taux_reponse_pct = mean(
+          validation_test_data$Response[rows],
+          na.rm = TRUE
+        ) * 100,
+        check.names = FALSE
+      )
+    }
+  )
+)
+write.csv(
+  validation_profiles,
+  file.path(reports_dir, "profils_segments_test_independant.csv"),
+  row.names = FALSE,
+  fileEncoding = "UTF-8"
+)
+
+
+# ------------------------------------------------------------
+# 21. DIAGNOSTIC DETAILLE DES SILHOUETTES
 # ------------------------------------------------------------
 
 silhouette_data <- data.frame(
@@ -1420,9 +1750,15 @@ silhouette_diagnostic <- do.call(
         Segment = level,
         Nombre_clients = length(values),
         Silhouette_moyenne = mean(values),
+        Silhouette_q05 = unname(quantile(values, 0.05)),
+        Silhouette_q25 = unname(quantile(values, 0.25)),
         Silhouette_mediane = median(values),
+        Silhouette_q75 = unname(quantile(values, 0.75)),
+        Silhouette_q95 = unname(quantile(values, 0.95)),
         Pourcentage_silhouettes_negatives =
-          mean(values < 0) * 100
+          mean(values < 0) * 100,
+        Pourcentage_silhouettes_entre_0_et_0_10 =
+          mean(values >= 0 & values <= 0.10) * 100
       )
     }
   )
@@ -1438,9 +1774,128 @@ write.csv(
   fileEncoding = "UTF-8"
 )
 
+boundary_threshold <- 0.10
+boundary_indices <- which(
+  best_silhouette[, "sil_width"] <= boundary_threshold
+)
+individual_silhouettes <- data.frame(
+  ID = data$ID,
+  Segment = best_silhouette[, "cluster"],
+  Segment_voisin = best_silhouette[, "neighbor"],
+  Largeur_silhouette = best_silhouette[, "sil_width"],
+  check.names = FALSE
+)
+individual_silhouettes <- individual_silhouettes[
+  order(
+    individual_silhouettes$Segment,
+    individual_silhouettes$Largeur_silhouette
+  ),
+  ,
+  drop = FALSE
+]
+write.csv(
+  individual_silhouettes,
+  file.path(reports_dir, "silhouettes_individuelles.csv"),
+  row.names = FALSE,
+  fileEncoding = "UTF-8"
+)
+
+boundary_clients <- data.frame(
+  ID = data$ID[boundary_indices],
+  Segment = best_silhouette[boundary_indices, "cluster"],
+  Segment_voisin = best_silhouette[boundary_indices, "neighbor"],
+  Silhouette = best_silhouette[boundary_indices, "sil_width"],
+  data[
+    boundary_indices,
+    c(segmentation_features, "Response"),
+    drop = FALSE
+  ],
+  check.names = FALSE
+)
+boundary_clients <- boundary_clients[
+  order(boundary_clients$Silhouette),
+  ,
+  drop = FALSE
+]
+write.csv(
+  boundary_clients,
+  file.path(reports_dir, "clients_proches_frontiere.csv"),
+  row.names = FALSE,
+  fileEncoding = "UTF-8"
+)
+
+boundary_summary <- data.frame(
+  Seuil_silhouette = boundary_threshold,
+  Nombre_clients_proches_frontiere = length(boundary_indices),
+  Pourcentage_clients_proches_frontiere =
+    length(boundary_indices) / nrow(data) * 100,
+  Nombre_silhouettes_negatives =
+    sum(best_silhouette[, "sil_width"] < 0),
+  Pourcentage_silhouettes_negatives =
+    mean(best_silhouette[, "sil_width"] < 0) * 100
+)
+write.csv(
+  boundary_summary,
+  file.path(reports_dir, "resume_clients_proches_frontiere.csv"),
+  row.names = FALSE,
+  fileEncoding = "UTF-8"
+)
+
+p_individual_silhouettes <- ggplot2::ggplot(
+  individual_silhouettes,
+  ggplot2::aes(
+    x = seq_len(nrow(individual_silhouettes)),
+    y = Largeur_silhouette,
+    fill = factor(Segment)
+  )
+) +
+  ggplot2::geom_col(
+    width = 1
+  ) +
+  ggplot2::geom_hline(
+    yintercept = 0,
+    color = "#C44E52",
+    linewidth = 0.7
+  ) +
+  ggplot2::geom_hline(
+    yintercept = boundary_threshold,
+    color = "#E69F00",
+    linetype = "dashed",
+    linewidth = 0.7
+  ) +
+  ggplot2::facet_grid(
+    Segment ~ .,
+    scales = "free_x",
+    space = "free_x"
+  ) +
+  ggplot2::labs(
+    title = "Silhouettes individuelles de la partition K-means",
+    subtitle = paste(
+      "Valeur négative : affectation à examiner | Seuil exploratoire :",
+      boundary_threshold
+    ),
+    x = "Clients de chaque segment, triés par silhouette croissante",
+    y = "Largeur de silhouette",
+    fill = "Segment"
+  ) +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    legend.position = "none",
+    axis.text.x = ggplot2::element_blank(),
+    axis.ticks.x = ggplot2::element_blank()
+  )
+
+ggplot2::ggsave(
+  file.path(figures_dir, "10_silhouettes_individuelles.png"),
+  p_individual_silhouettes,
+  width = 10,
+  height = 7,
+  dpi = 160
+)
+
 
 # ------------------------------------------------------------
-# 21. GRAPHIQUE DE SELECTION DES CLUSTERS
+# 22. GRAPHIQUE DE SELECTION DES CLUSTERS
 # ------------------------------------------------------------
 
 p_silhouette <- ggplot2::ggplot(
@@ -1646,6 +2101,16 @@ profile_variables <- c(
   "NumWebVisitsMonth"
 )
 
+segment_descriptive_data <- data
+segment_descriptive_data$Age_Client[
+  !is.na(segment_descriptive_data$Age_Client) &
+    segment_descriptive_data$Age_Client > 90
+] <- NA_real_
+segment_descriptive_data$Income[
+  !is.na(segment_descriptive_data$Income) &
+    segment_descriptive_data$Income == 666666
+] <- NA_real_
+
 method_cluster_labels <- list(
   "K-means" = best_fit$cluster,
   "CAH - Ward.D2" = cah_cluster
@@ -1699,7 +2164,7 @@ method_profile_comparison <- do.call(
               Segment = as.character(level),
               Nombre_clients = sum(rows),
               lapply(
-                data[
+                segment_descriptive_data[
                   rows,
                   profile_variables,
                   drop = FALSE
@@ -1708,7 +2173,7 @@ method_profile_comparison <- do.call(
                 na.rm = TRUE
               ),
               Taux_reponse_pct = mean(
-                data$Response[rows],
+                segment_descriptive_data$Response[rows],
                 na.rm = TRUE
               ) * 100,
               check.names = FALSE
@@ -1745,7 +2210,7 @@ cluster_profiles <- do.call(
         Segment = level,
         Nombre_clients = sum(rows),
         lapply(
-          data[
+          segment_descriptive_data[
             rows,
             profile_variables,
             drop = FALSE
@@ -1783,7 +2248,7 @@ cluster_profiles$Education_majoritaire <- vapply(
   levels(segment),
   function(level) {
 
-    values <- data$Education[
+    values <- segment_descriptive_data$Education[
       segment == level
     ]
 
@@ -1804,7 +2269,7 @@ cluster_profiles$Statut_matrimonial_majoritaire <-
     levels(segment),
     function(level) {
 
-      values <- data$Marital_Status[
+      values <- segment_descriptive_data$Marital_Status[
         segment == level
       ]
 
@@ -1828,6 +2293,312 @@ write.csv(
   ),
   row.names = FALSE,
   fileEncoding = "UTF-8"
+)
+
+quantitative_distribution_summary <- do.call(
+  rbind,
+  lapply(
+    profile_variables,
+    function(variable) {
+      do.call(
+        rbind,
+        lapply(
+          levels(segment),
+          function(level) {
+            values <- segment_descriptive_data[[variable]][
+              segment == level
+            ]
+            observed <- values[is.finite(values)]
+            data.frame(
+              Variable = variable,
+              Segment = level,
+              Nombre_clients = length(values),
+              Nombre_observe = length(observed),
+              Nombre_manquant = sum(!is.finite(values)),
+              Moyenne = mean(observed),
+              Ecart_type = sd(observed),
+              Mediane = median(observed),
+              Q1 = unname(quantile(observed, 0.25)),
+              Q3 = unname(quantile(observed, 0.75)),
+              IQR = IQR(observed),
+              Pourcentage_zero = mean(observed == 0) * 100,
+              check.names = FALSE
+            )
+          }
+        )
+      )
+    }
+  )
+)
+write.csv(
+  quantitative_distribution_summary,
+  file.path(reports_dir, "distributions_quantitatives_segments.csv"),
+  row.names = FALSE,
+  fileEncoding = "UTF-8"
+)
+
+quantitative_tests <- lapply(
+  profile_variables,
+  function(variable) {
+    values <- segment_descriptive_data[[variable]]
+    group_one <- values[segment == levels(segment)[[1]]]
+    group_two <- values[segment == levels(segment)[[2]]]
+    group_one <- group_one[is.finite(group_one)]
+    group_two <- group_two[is.finite(group_two)]
+
+    test <- stats::wilcox.test(
+      group_one,
+      group_two,
+      exact = FALSE,
+      correct = TRUE
+    )
+    u_statistic <- unname(test$statistic)
+    rank_biserial <- 2 * u_statistic /
+      (length(group_one) * length(group_two)) - 1
+
+    data.frame(
+      Variable = variable,
+      Type = "Quantitative",
+      Test = "Wilcoxon-Mann-Whitney",
+      N_segment_1 = length(group_one),
+      N_segment_2 = length(group_two),
+      Mediane_segment_1 = median(group_one),
+      Mediane_segment_2 = median(group_two),
+      Difference_medianes = median(group_one) - median(group_two),
+      Statistique = u_statistic,
+      Taille_effet = rank_biserial,
+      Mesure_taille_effet = "Delta de Cliff (segment 1 vs 2)",
+      P_value = max(test$p.value, .Machine$double.xmin),
+      stringsAsFactors = FALSE
+    )
+  }
+)
+
+categorical_variables <- c(
+  "Response",
+  "Education",
+  "Marital_Status"
+)
+categorical_distribution_summary <- do.call(
+  rbind,
+  lapply(
+    categorical_variables,
+    function(variable) {
+      values <- as.character(segment_descriptive_data[[variable]])
+      values[is.na(values)] <- "Manquant"
+      counts <- table(
+        Modalite = values,
+        Segment = segment,
+        useNA = "no"
+      )
+      proportions <- prop.table(counts, margin = 2) * 100
+      data.frame(
+        Variable = variable,
+        Modalite = rep(rownames(counts), times = ncol(counts)),
+        Segment = rep(colnames(counts), each = nrow(counts)),
+        Nombre_clients = as.vector(counts),
+        Pourcentage_segment = as.vector(proportions),
+        row.names = NULL,
+        check.names = FALSE
+      )
+    }
+  )
+)
+write.csv(
+  categorical_distribution_summary,
+  file.path(reports_dir, "distributions_categorielles_segments.csv"),
+  row.names = FALSE,
+  fileEncoding = "UTF-8"
+)
+
+categorical_tests <- lapply(
+  categorical_variables,
+  function(variable) {
+    values <- as.character(segment_descriptive_data[[variable]])
+    values[is.na(values)] <- "Manquant"
+    contingency <- table(
+      Modalite = values,
+      Segment = segment,
+      useNA = "no"
+    )
+    chi_square <- suppressWarnings(
+      stats::chisq.test(contingency, correct = FALSE)
+    )
+    use_simulation <- any(chi_square$expected < 5)
+    if (use_simulation) {
+      set.seed(2031)
+      test <- stats::chisq.test(
+        contingency,
+        correct = FALSE,
+        simulate.p.value = TRUE,
+        B = 10000
+      )
+      test_name <- "Chi-deux simule (10 000 repetitions)"
+    } else {
+      test <- chi_square
+      test_name <- "Chi-deux de Pearson"
+    }
+    cramer_v <- sqrt(
+      unname(test$statistic) /
+        (sum(contingency) * min(dim(contingency) - 1))
+    )
+
+    data.frame(
+      Variable = variable,
+      Type = "Categorielle",
+      Test = test_name,
+      N_segment_1 = sum(contingency[, 1]),
+      N_segment_2 = sum(contingency[, 2]),
+      Mediane_segment_1 = NA_real_,
+      Mediane_segment_2 = NA_real_,
+      Difference_medianes = NA_real_,
+      Statistique = unname(test$statistic),
+      Taille_effet = cramer_v,
+      Mesure_taille_effet = "V de Cramer",
+      P_value = test$p.value,
+      stringsAsFactors = FALSE
+    )
+  }
+)
+
+segment_difference_tests <- do.call(
+  rbind,
+  c(quantitative_tests, categorical_tests)
+)
+segment_difference_tests$P_value_Holm <- stats::p.adjust(
+  segment_difference_tests$P_value,
+  method = "holm"
+)
+segment_difference_tests <- segment_difference_tests[
+  order(segment_difference_tests$P_value_Holm),
+  ,
+  drop = FALSE
+]
+write.csv(
+  segment_difference_tests,
+  file.path(reports_dir, "tests_differences_segments.csv"),
+  row.names = FALSE,
+  fileEncoding = "UTF-8"
+)
+
+quantitative_distribution_long <- do.call(
+  rbind,
+  lapply(
+    profile_variables,
+    function(variable) {
+      data.frame(
+        Variable = variable,
+        Segment = segment,
+        Valeur = segment_descriptive_data[[variable]]
+      )
+    }
+  )
+)
+quantitative_distribution_long <- quantitative_distribution_long[
+  is.finite(quantitative_distribution_long$Valeur),
+  ,
+  drop = FALSE
+]
+
+p_segment_boxplots <- ggplot2::ggplot(
+  quantitative_distribution_long,
+  ggplot2::aes(
+    x = Segment,
+    y = Valeur,
+    fill = Segment
+  )
+) +
+  ggplot2::geom_boxplot(
+    outlier.alpha = 0.20,
+    outlier.size = 0.5
+  ) +
+  ggplot2::facet_wrap(
+    ~Variable,
+    scales = "free_y",
+    ncol = 4
+  ) +
+  ggplot2::labs(
+    title = "Distributions quantitatives par segment",
+    subtitle = "Valeurs originales ; âge > 90 et revenu = 666666 exclus des descriptifs",
+    x = "Segment K-means",
+    y = "Valeur",
+    fill = "Segment"
+  ) +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    legend.position = "none",
+    axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
+  )
+ggplot2::ggsave(
+  file.path(figures_dir, "11_distributions_quantitatives_segments.png"),
+  p_segment_boxplots,
+  width = 13,
+  height = 10,
+  dpi = 160
+)
+
+p_segment_ecdf <- ggplot2::ggplot(
+  quantitative_distribution_long,
+  ggplot2::aes(
+    x = Valeur,
+    color = Segment
+  )
+) +
+  ggplot2::stat_ecdf(
+    linewidth = 0.7,
+    alpha = 0.85
+  ) +
+  ggplot2::facet_wrap(
+    ~Variable,
+    scales = "free_x",
+    ncol = 4
+  ) +
+  ggplot2::labs(
+    title = "Distributions cumulées des variables par segment",
+    x = "Valeur observée",
+    y = "Proportion cumulée",
+    color = "Segment"
+  ) +
+  ggplot2::theme_minimal()
+ggplot2::ggsave(
+  file.path(figures_dir, "12_distributions_cumulees_segments.png"),
+  p_segment_ecdf,
+  width = 13,
+  height = 10,
+  dpi = 160
+)
+
+p_categorical_distributions <- ggplot2::ggplot(
+  categorical_distribution_summary,
+  ggplot2::aes(
+    x = Modalite,
+    y = Pourcentage_segment,
+    fill = Segment
+  )
+) +
+  ggplot2::geom_col(
+    position = "dodge"
+  ) +
+  ggplot2::facet_wrap(
+    ~Variable,
+    scales = "free_x"
+  ) +
+  ggplot2::labs(
+    title = "Variables catégorielles et réponse par segment",
+    x = "Modalité",
+    y = "Pourcentage dans le segment",
+    fill = "Segment"
+  ) +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 35, hjust = 1)
+  )
+ggplot2::ggsave(
+  file.path(figures_dir, "13_distributions_categorielles_segments.png"),
+  p_categorical_distributions,
+  width = 12,
+  height = 6,
+  dpi = 160
 )
 
 total_spending <- rowSums(
@@ -2185,6 +2956,24 @@ cat(
   round(subsample_stability_summary$ARI_moyen[[1]], 3),
   "| Minimum :",
   round(subsample_stability_summary$ARI_minimum[[1]], 3),
+  "\n"
+)
+
+cat(
+  "Validation holdout — K :",
+  validation_best_k,
+  "| Silhouette entraînement/test :",
+  round(validation_summary$Silhouette_moyenne[[1]], 3),
+  "/",
+  round(validation_summary$Silhouette_moyenne[[2]], 3),
+  "\n"
+)
+
+cat(
+  "Clients proches de la frontière (silhouette <= 0,10) :",
+  boundary_summary$Nombre_clients_proches_frontiere[[1]],
+  "| Silhouettes négatives :",
+  boundary_summary$Nombre_silhouettes_negatives[[1]],
   "\n"
 )
 

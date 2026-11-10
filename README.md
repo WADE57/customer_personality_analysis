@@ -55,6 +55,22 @@ tests marketing, et non des conclusions causales.
 ## Démarrage
 Voir `docs/INSTALLATION.md`.
 
+## Exécuter tout le projet
+
+Après avoir installé les dépendances Python et R et placé
+`marketing_campaign.csv` dans `data/raw/`, exécuter depuis le dossier du
+projet :
+
+```bash
+./run_all.sh
+```
+
+Le script enchaîne l'inspection des données brutes, leur nettoyage,
+l'analyse exploratoire Python, puis le diagnostic des variables, l'ACP,
+la segmentation et le rendu du rapport R. Il s'arrête dès qu'une étape
+échoue. Les principaux rapports sont générés dans `reports/eda/` et
+`reports/segmentation/`.
+
 ## Lancer l'analyse exploratoire
 
 Après avoir placé `marketing_campaign.csv` dans `data/raw/` et activé
@@ -128,6 +144,34 @@ comparés à la partition de référence. Ces résultats indiquent une forte
 similarité des partitions dans l'espace ACP utilisé, sans démontrer leur
 stabilité sur une population indépendante.
 
+Le rapport réalise aussi une validation interne en réservant 20 % des clients
+avant le prétraitement : imputation, plafonnement, standardisation, ACP et
+K-means sont ajustés uniquement sur les 80 % d'entraînement. Le modèle est
+ensuite appliqué au test mis de côté. Cette vérification concerne le même
+jeu de données et ne remplace pas une validation externe sur une autre
+période ou population. Les silhouettes individuelles inférieures ou égales
+à 0,10 sont exportées pour examiner les clients proches de la frontière.
+Les résultats sont enregistrés dans
+`reports/segmentation/validation_echantillon_mis_de_cote.csv`,
+`profils_segments_test_independant.csv` et
+`clients_proches_frontiere.csv`. Les largeurs de silhouette de chaque client
+sont exportées dans `silhouettes_individuelles.csv`, résumées par segment
+dans `diagnostic_silhouette_segments.csv` et visualisées dans
+`figures/segmentation/10_silhouettes_individuelles.png`.
+La silhouette de validation est calculée sur les distances entre clients
+test uniquement ; les silhouettes proches de zéro décrivent la segmentation
+initiale de tous les clients, pas le seul échantillon test.
+
+L'analyse descriptive des segments exporte les statistiques quantitatives,
+les distributions catégorielles et les comparaisons exploratoires
+(Wilcoxon-Mann-Whitney ou chi-deux, correction de Holm et tailles d'effet)
+dans `distributions_quantitatives_segments.csv`,
+`distributions_categorielles_segments.csv` et `tests_differences_segments.csv`.
+Les figures associées sont les boxplots, les distributions cumulées et les
+répartitions catégorielles dans `figures/segmentation/11_*.png` à
+`13_*.png`. Les tests sont interprétés avec prudence, car plusieurs variables
+ont servi à construire les clusters.
+
 Le script exclut `ID` et `Response` de la segmentation, sélectionne le nombre
 de groupes avec la silhouette moyenne et enregistre le rapport dans
 `reports/segmentation/pca_segmentation.html` (ainsi qu'une synthèse Markdown
@@ -146,7 +190,8 @@ réponse observés ; elles ne démontrent pas l'efficacité causale d'une action
 | Stabilité aux initialisations | Réalisée |
 | Sensibilité à la composition par sous-échantillonnage | Réalisée, conditionnellement au prétraitement et à l'ACP actuels |
 | Comparaison K-means / CAH de Ward | Réalisée sur les mêmes scores d'ACP |
-| Validation sur un échantillon indépendant | À réaliser |
+| Validation interne sur un test mis de côté, prétraitement/ACP ajustés sur l'entraînement | Réalisée |
+| Validation externe sur une autre période ou population | À réaliser |
 
 ## Reproductibilité
 Les fichiers de données ne sont pas inclus dans Git. Ajouter la source, la date de téléchargement, le nom du fichier et son empreinte SHA-256 dans `docs/data_sources.md`.
