@@ -1,0 +1,2 @@
+"Nombre_repetitions","Fraction_clients_pct","Taille_sous_echantillon","Initialisations_kmeans_par_repetition","Graine","ARI_moyen","ARI_ecart_type","ARI_minimum","ARI_quantile_05","ARI_maximum"
+100,80,1792,50,2028,0.978988379332108,0.0179086674656542,0.928093722755954,0.934904590273425,1

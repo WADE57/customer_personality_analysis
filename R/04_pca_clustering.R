@@ -900,6 +900,330 @@ adjusted_rand_index <- function(reference, candidate) {
   (index - expected_index) / denominator
 }
 
+cah_fit <- hclust(
+  distance_matrix,
+  method = "ward.D2"
+)
+cah_cluster <- cutree(
+  cah_fit,
+  k = best_k
+)
+names(cah_cluster) <- as.character(seq_along(cah_cluster))
+cah_silhouette <- cluster::silhouette(
+  cah_cluster,
+  distance_matrix
+)
+
+kmeans_cluster_sizes <- table(best_fit$cluster)
+cah_cluster_sizes <- table(cah_cluster)
+
+method_comparison <- data.frame(
+  Methode = c("K-means", "CAH - Ward.D2"),
+  Nombre_de_groupes = c(best_k, best_k),
+  Distance = c("Euclidienne", "Euclidienne"),
+  Silhouette_moyenne = c(
+    mean(best_silhouette[, "sil_width"]),
+    mean(cah_silhouette[, "sil_width"])
+  ),
+  Taille_minimale = c(
+    min(kmeans_cluster_sizes),
+    min(cah_cluster_sizes)
+  ),
+  Taille_maximale = c(
+    max(kmeans_cluster_sizes),
+    max(cah_cluster_sizes)
+  ),
+  ARI_vs_Kmeans = c(
+    1,
+    adjusted_rand_index(best_fit$cluster, cah_cluster)
+  )
+)
+
+write.csv(
+  method_comparison,
+  file.path(
+    reports_dir,
+    "comparaison_kmeans_cah.csv"
+  ),
+  row.names = FALSE,
+  fileEncoding = "UTF-8"
+)
+
+method_projection_data <- rbind(
+  data.frame(
+    PC1 = pca$x[, 1],
+    PC2 = pca$x[, 2],
+    Segment = factor(best_fit$cluster),
+    Methode = "K-means"
+  ),
+  data.frame(
+    PC1 = pca$x[, 1],
+    PC2 = pca$x[, 2],
+    Segment = factor(cah_cluster),
+    Methode = "CAH - Ward.D2"
+  )
+)
+
+method_centers <- data.frame(
+  PC1 = best_fit$centers[, 1],
+  PC2 = best_fit$centers[, 2],
+  Methode = "K-means"
+)
+
+p_method_projection <- ggplot2::ggplot(
+  method_projection_data,
+  ggplot2::aes(
+    x = PC1,
+    y = PC2,
+    color = Segment
+  )
+) +
+  ggplot2::geom_point(
+    alpha = 0.55,
+    size = 1.4
+  ) +
+  ggplot2::geom_point(
+    data = method_centers,
+    ggplot2::aes(
+      x = PC1,
+      y = PC2
+    ),
+    inherit.aes = FALSE,
+    shape = 4,
+    color = "black",
+    size = 5,
+    stroke = 1.5
+  ) +
+  ggplot2::facet_wrap(
+    ~Methode
+  ) +
+  ggplot2::labs(
+    title = paste(
+      "Comparaison des partitions dans le plan ACP (K =",
+      best_k,
+      ")"
+    ),
+    subtitle = "Les numéros de segments sont propres à chaque méthode",
+    x = sprintf(
+      "PC1 (%.1f %% de variance)",
+      variance_explained[[1]] * 100
+    ),
+    y = sprintf(
+      "PC2 (%.1f %% de variance)",
+      variance_explained[[2]] * 100
+    ),
+    color = "Segment"
+  ) +
+  ggplot2::theme_minimal()
+
+ggplot2::ggsave(
+  file.path(
+    figures_dir,
+    "06_comparaison_partitions_kmeans_cah.png"
+  ),
+  p_method_projection,
+  width = 12,
+  height = 6,
+  dpi = 160
+)
+
+p_kmeans_centroids <- data.frame(
+  Segment = factor(seq_len(nrow(best_fit$centers))),
+  PC1 = best_fit$centers[, 1],
+  PC2 = best_fit$centers[, 2]
+)
+
+p_kmeans_projection <- ggplot2::ggplot(
+  data.frame(
+    PC1 = pca$x[, 1],
+    PC2 = pca$x[, 2],
+    Segment = segment
+  ),
+  ggplot2::aes(
+    x = PC1,
+    y = PC2,
+    color = Segment
+  )
+) +
+  ggplot2::geom_point(
+    alpha = 0.65,
+    size = 1.8
+  ) +
+  ggplot2::geom_point(
+    data = p_kmeans_centroids,
+    ggplot2::aes(
+      x = PC1,
+      y = PC2
+    ),
+    inherit.aes = FALSE,
+    shape = 4,
+    color = "black",
+    size = 5,
+    stroke = 1.5
+  ) +
+  ggplot2::labs(
+    title = paste0(
+      "K-means : K = ",
+      best_k,
+      " (silhouette : ",
+      sprintf("%.3f", mean(best_silhouette[, "sil_width"])),
+      ")"
+    ),
+    subtitle = paste(
+      "Projection sur PC1-PC2 ; clustering calculé sur",
+      n_components,
+      "composantes"
+    ),
+    x = sprintf(
+      "PC1 (%.1f %% de variance)",
+      variance_explained[[1]] * 100
+    ),
+    y = sprintf(
+      "PC2 (%.1f %% de variance)",
+      variance_explained[[2]] * 100
+    ),
+    color = "Segment"
+  ) +
+  ggplot2::theme_minimal()
+
+ggplot2::ggsave(
+  file.path(
+    figures_dir,
+    "09_kmeans_centroides_silhouette.png"
+  ),
+  p_kmeans_projection,
+  width = 9,
+  height = 7,
+  dpi = 160
+)
+
+p_method_silhouette <- ggplot2::ggplot(
+  method_comparison,
+  ggplot2::aes(
+    x = Methode,
+    y = Silhouette_moyenne,
+    fill = Methode
+  )
+) +
+  ggplot2::geom_col(
+    width = 0.65,
+    show.legend = FALSE
+  ) +
+  ggplot2::geom_text(
+    ggplot2::aes(
+      label = sprintf("%.3f", Silhouette_moyenne)
+    ),
+    vjust = -0.4
+  ) +
+  ggplot2::coord_cartesian(
+    ylim = c(
+      0,
+      max(method_comparison$Silhouette_moyenne) * 1.15
+    )
+  ) +
+  ggplot2::labs(
+    title = "Silhouette moyenne par méthode",
+    subtitle = paste(
+      "Distance euclidienne,",
+      best_k,
+      "groupes"
+    ),
+    x = NULL,
+    y = "Silhouette moyenne"
+  ) +
+  ggplot2::theme_minimal()
+
+ggplot2::ggsave(
+  file.path(
+    figures_dir,
+    "07_comparaison_silhouette_kmeans_cah.png"
+  ),
+  p_method_silhouette,
+  width = 8,
+  height = 5,
+  dpi = 160
+)
+
+p_dendrogram_path <- file.path(
+  figures_dir,
+  "08_dendrogramme_cah_ward.png"
+)
+
+cluster_palette <- setNames(
+  c("#E64B35", "#4DBBD5", "#00A087", "#3C5488", "#F39B7F",
+    "#8491B4", "#91D1C2", "#DC0000")[seq_len(best_k)],
+  as.character(seq_len(best_k))
+)
+
+color_dendrogram_branches <- function(node) {
+
+  if (is.leaf(node)) {
+    leaf_label <- attr(node, "label")
+    cluster_id <- unname(cah_cluster[as.character(leaf_label)])
+    attr(node, "edgePar") <- list(
+      col = cluster_palette[[as.character(cluster_id)]],
+      lwd = 1.2
+    )
+    return(node)
+  }
+
+  node_labels <- labels(node)
+  node_clusters <- unique(
+    unname(cah_cluster[as.character(node_labels)])
+  )
+  edge_color <- if (length(node_clusters) == 1L) {
+    cluster_palette[[as.character(node_clusters[[1]])]]
+  } else {
+    "#555555"
+  }
+
+  attr(node, "edgePar") <- list(
+    col = edge_color,
+    lwd = 1.2
+  )
+
+  for (child_index in seq_along(node)) {
+    node[[child_index]] <- color_dendrogram_branches(
+      node[[child_index]]
+    )
+  }
+
+  node
+}
+
+dendrogram <- color_dendrogram_branches(
+  as.dendrogram(cah_fit)
+)
+
+grDevices::png(
+  filename = p_dendrogram_path,
+  width = 1800,
+  height = 1000,
+  res = 160
+)
+plot(
+  dendrogram,
+  leaflab = "none",
+  main = paste(
+    "Dendrogramme de la CAH (Ward.D2, K =",
+    best_k,
+    ")"
+  ),
+  xlab = "Clients (étiquettes masquées)",
+  ylab = "Hauteur de fusion",
+  sub = ""
+)
+rect.hclust(
+  cah_fit,
+  k = best_k,
+  border = seq_len(best_k) + 1L
+)
+grDevices::dev.off()
+
+distance_matrix_size_mb <- as.numeric(
+  object.size(distance_matrix)
+) / 1024^2
+
 stability_runs <- 100L
 stability_seed <- 2027L
 stability_ari <- numeric(stability_runs)
@@ -968,26 +1292,31 @@ subsample_size <- floor(
 )
 subsample_seed <- 2028L
 subsample_ari <- numeric(subsample_runs)
-subsample_fit_seeds <- integer(subsample_runs)
 pca_score_matrix <- as.matrix(pca_scores)
 
 set.seed(subsample_seed)
+subsample_indices <- lapply(
+  seq_len(subsample_runs),
+  function(run) {
+    sample.int(
+      nrow(pca_score_matrix),
+      size = subsample_size,
+      replace = FALSE
+    )
+  }
+)
+subsample_fit_seeds <- sample.int(
+  .Machine$integer.max,
+  size = subsample_runs
+)
+
 for (run in seq_len(subsample_runs)) {
 
-  subsample_indices <- sample.int(
-    nrow(pca_score_matrix),
-    size = subsample_size,
-    replace = FALSE
-  )
-
-  subsample_fit_seeds[[run]] <- sample.int(
-    .Machine$integer.max,
-    size = 1L
-  )
+  current_indices <- subsample_indices[[run]]
 
   set.seed(subsample_fit_seeds[[run]])
   subsample_fit <- kmeans(
-    pca_score_matrix[subsample_indices, , drop = FALSE],
+    pca_score_matrix[current_indices, , drop = FALSE],
     centers = best_k,
     nstart = 50,
     iter.max = 100
@@ -1319,6 +1648,90 @@ profile_variables <- c(
   "NumCatalogPurchases",
   "NumStorePurchases",
   "NumWebVisitsMonth"
+)
+
+method_cluster_labels <- list(
+  "K-means" = best_fit$cluster,
+  "CAH - Ward.D2" = cah_cluster
+)
+
+method_cluster_sizes <- do.call(
+  rbind,
+  lapply(
+    names(method_cluster_labels),
+    function(method) {
+
+      sizes <- table(method_cluster_labels[[method]])
+
+      data.frame(
+        Methode = method,
+        Segment = names(sizes),
+        Nombre_clients = as.integer(sizes),
+        Pourcentage = as.integer(sizes) / nrow(data) * 100,
+        row.names = NULL
+      )
+    }
+  )
+)
+
+write.csv(
+  method_cluster_sizes,
+  file.path(
+    reports_dir,
+    "tailles_segments_comparaison.csv"
+  ),
+  row.names = FALSE,
+  fileEncoding = "UTF-8"
+)
+
+method_profile_comparison <- do.call(
+  rbind,
+  lapply(
+    names(method_cluster_labels),
+    function(method) {
+
+      labels <- method_cluster_labels[[method]]
+      do.call(
+        rbind,
+        lapply(
+          sort(unique(labels)),
+          function(level) {
+
+            rows <- labels == level
+            data.frame(
+              Methode = method,
+              Segment = as.character(level),
+              Nombre_clients = sum(rows),
+              lapply(
+                data[
+                  rows,
+                  profile_variables,
+                  drop = FALSE
+                ],
+                median,
+                na.rm = TRUE
+              ),
+              Taux_reponse_pct = mean(
+                data$Response[rows],
+                na.rm = TRUE
+              ) * 100,
+              check.names = FALSE
+            )
+          }
+        )
+      )
+    }
+  )
+)
+
+write.csv(
+  method_profile_comparison,
+  file.path(
+    reports_dir,
+    "profils_kmeans_cah.csv"
+  ),
+  row.names = FALSE,
+  fileEncoding = "UTF-8"
 )
 
 
@@ -1805,6 +2218,92 @@ report_lines <- c(
 
   "",
 
+  "## Comparaison K-means et classification hiérarchique",
+
+  "",
+
+  paste0(
+    "Les deux méthodes utilisent les mêmes ",
+    nrow(pca_scores),
+    " clients et les mêmes scores d'ACP retenus. La CAH utilise la distance ",
+    "euclidienne et le critère de Ward.D2 ; l'arbre est coupé en ",
+    best_k,
+    " groupes pour permettre une comparaison directe."
+  ),
+
+  "",
+
+  paste0(
+    "La silhouette moyenne est de ",
+    sprintf("%.3f", method_comparison$Silhouette_moyenne[[1]]),
+    " pour K-means et de ",
+    sprintf("%.3f", method_comparison$Silhouette_moyenne[[2]]),
+    " pour Ward.D2. L'ARI entre les deux partitions est de ",
+    sprintf("%.3f", method_comparison$ARI_vs_Kmeans[[2]]),
+    "; il mesure leur concordance, et non la qualité absolue d'une méthode."
+  ),
+
+  "",
+
+  "Les numéros de segments sont propres à chaque méthode ; il faut comparer",
+  "les profils et les affectations plutôt que supposer que le segment 1 d'une",
+  "méthode correspond au segment 1 de l'autre.",
+
+  "",
+
+  paste(
+    capture.output(
+      print(
+        method_comparison,
+        row.names = FALSE
+      )
+    ),
+    collapse = "\n"
+  ),
+
+  "",
+
+  "### Tailles des groupes par méthode",
+
+  "",
+
+  paste(
+    capture.output(
+      print(
+        method_cluster_sizes,
+        row.names = FALSE
+      )
+    ),
+    collapse = "\n"
+  ),
+
+  "",
+
+  "### Profils des groupes par méthode",
+
+  "",
+
+  paste(
+    capture.output(
+      print(
+        method_profile_comparison,
+        row.names = FALSE
+      )
+    ),
+    collapse = "\n"
+  ),
+
+  "",
+
+  paste0(
+    "La matrice de distances utilisée occupe environ ",
+    sprintf("%.1f", distance_matrix_size_mb),
+    " Mio en mémoire. La CAH requiert O(n²) en mémoire et en calcul ; ce ",
+    "coût augmente rapidement avec le nombre de clients."
+  ),
+
+  "",
+
   "| Segment | Nombre de clients | Pourcentage |",
 
   "|---|---:|---:|"
@@ -2048,6 +2547,14 @@ report_lines <- c(
 
   "- `figures/segmentation/05_profils_segments.png`",
 
+  "- `figures/segmentation/06_comparaison_partitions_kmeans_cah.png`",
+
+  "- `figures/segmentation/07_comparaison_silhouette_kmeans_cah.png`",
+
+  "- `figures/segmentation/08_dendrogramme_cah_ward.png`",
+
+  "- `figures/segmentation/09_kmeans_centroides_silhouette.png`",
+
   "",
 
   "## 9. Fichiers de résultats",
@@ -2063,6 +2570,12 @@ report_lines <- c(
   "- `reports/segmentation/interpretation_composantes_acp.csv`",
 
   "- `reports/segmentation/recommandations_marketing.csv`",
+
+  "- `reports/segmentation/comparaison_kmeans_cah.csv`",
+
+  "- `reports/segmentation/tailles_segments_comparaison.csv`",
+
+  "- `reports/segmentation/profils_kmeans_cah.csv`",
 
   "- `reports/segmentation/resume_stabilite_kmeans.csv`",
 
@@ -2145,6 +2658,14 @@ cat(
 cat(
   "Nombre de segments retenu :",
   best_k,
+  "\n"
+)
+
+cat(
+  "Silhouette CAH Ward.D2 :",
+  round(method_comparison$Silhouette_moyenne[[2]], 3),
+  "| ARI vs K-means :",
+  round(method_comparison$ARI_vs_Kmeans[[2]], 3),
   "\n"
 )
 

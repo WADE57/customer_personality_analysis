@@ -165,6 +165,93 @@ knitr::kable(
 knitr::include_graphics("../figures/segmentation/02_selection_clusters.png")
 ```
 
+### Comparaison avec la classification ascendante hiérarchique
+
+K-means et la CAH utilisent ici les mêmes clients, les mêmes composantes ACP
+et la distance euclidienne. La CAH utilise le critère `Ward.D2`, puis son
+arbre est coupé au même nombre de groupes que K-means. La silhouette compare
+la cohésion et la séparation ; l'ARI compare la concordance des affectations
+sans dépendre de la numérotation des groupes.
+
+```{r method-comparison, echo=FALSE}
+method_comparison <- read.csv(
+  file.path(segmentation_dir, "comparaison_kmeans_cah.csv"),
+  check.names = FALSE
+)
+knitr::kable(
+  method_comparison,
+  digits = 3,
+  caption = "Comparaison des méthodes sur les mêmes données et avec le même K"
+)
+```
+
+```{r method-silhouette-figure, echo=FALSE, fig.cap="Comparaison des silhouettes moyennes de K-means et de Ward.D2."}
+knitr::include_graphics(
+  "../figures/segmentation/07_comparaison_silhouette_kmeans_cah.png"
+)
+```
+
+```{r kmeans-centroids-figure, echo=FALSE, fig.cap="K-means projeté sur PC1-PC2 ; les croix noires indiquent les centroïdes projetés et le titre donne la silhouette moyenne calculée sur toutes les composantes retenues."}
+knitr::include_graphics(
+  "../figures/segmentation/09_kmeans_centroides_silhouette.png"
+)
+```
+
+La silhouette moyenne est de
+`r sprintf("%.3f", method_comparison$Silhouette_moyenne[method_comparison$Methode == "K-means"])`
+pour K-means et de
+`r sprintf("%.3f", method_comparison$Silhouette_moyenne[method_comparison$Methode == "CAH - Ward.D2"])`
+pour Ward.D2. L'ARI entre les partitions est de
+`r sprintf("%.3f", method_comparison$ARI_vs_Kmeans[method_comparison$Methode == "CAH - Ward.D2"])` ;
+il décrit leur concordance, pas la qualité absolue d'une méthode.
+Les numéros de groupes sont propres à chaque méthode ; les profils et les
+affectations doivent être comparés, sans supposer que le groupe 1 correspond
+au groupe 1 dans les deux partitions.
+
+```{r method-cluster-sizes, echo=FALSE}
+method_sizes <- read.csv(
+  file.path(segmentation_dir, "tailles_segments_comparaison.csv"),
+  check.names = FALSE
+)
+knitr::kable(
+  method_sizes,
+  digits = 2,
+  caption = "Tailles et proportions des groupes selon la méthode"
+)
+```
+
+```{r method-cluster-profiles, echo=FALSE}
+method_profiles <- read.csv(
+  file.path(segmentation_dir, "profils_kmeans_cah.csv"),
+  check.names = FALSE
+)
+knitr::kable(
+  method_profiles,
+  digits = 2,
+  caption = "Profils médians par groupe et par méthode"
+)
+```
+
+```{r method-projection-figure, echo=FALSE, fig.cap="Projections des affectations K-means et Ward.D2 dans le plan des deux premières composantes."}
+knitr::include_graphics(
+  "../figures/segmentation/06_comparaison_partitions_kmeans_cah.png"
+)
+```
+
+Le graphique des affectations montre aussi les centroïdes de K-means par une
+croix noire. Ils ne sont pas affichés pour la CAH, qui est une méthode
+hiérarchique sans centroïdes.
+
+```{r ward-dendrogram-figure, echo=FALSE, fig.cap="Dendrogramme de Ward.D2 coupé au nombre de groupes retenu ; les étiquettes des clients sont masquées pour préserver la lisibilité."}
+knitr::include_graphics(
+  "../figures/segmentation/08_dendrogramme_cah_ward.png"
+)
+```
+
+La CAH et la matrice des distances ont un coût mémoire et calcul de l'ordre
+de `O(n²)`. Ce coût reste praticable pour les 2 240 clients étudiés, mais
+augmente rapidement sur des jeux de données beaucoup plus grands.
+
 ```{r cluster-diagnostic-figure, echo=FALSE, fig.cap="Distribution des largeurs de silhouette dans la partition retenue."}
 knitr::include_graphics("../figures/segmentation/03_diagnostic_silhouette.png")
 ```

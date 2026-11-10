@@ -1,0 +1,3 @@
+"Methode","Nombre_de_groupes","Distance","Silhouette_moyenne","Taille_minimale","Taille_maximale","ARI_vs_Kmeans"
+"K-means",2,"Euclidienne",0.357313516482121,1119,1121,1
+"CAH - Ward.D2",2,"Euclidienne",0.309272800624548,766,1474,0.468766786193758

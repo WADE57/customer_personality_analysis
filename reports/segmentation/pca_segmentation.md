@@ -20,6 +20,51 @@
 - Nombre de segments retenu : **2**.
 - Silhouette moyenne : **0.357**.
 
+## Comparaison K-means et classification hiérarchique
+
+Les deux méthodes utilisent les mêmes 2240 clients et les mêmes scores d'ACP retenus. La CAH utilise la distance euclidienne et le critère de Ward.D2 ; l'arbre est coupé en 2 groupes pour permettre une comparaison directe.
+
+La silhouette moyenne est de 0.357 pour K-means et de 0.309 pour Ward.D2. L'ARI entre les deux partitions est de 0.469; il mesure leur concordance, et non la qualité absolue d'une méthode.
+
+Les numéros de segments sont propres à chaque méthode ; il faut comparer
+les profils et les affectations plutôt que supposer que le segment 1 d'une
+méthode correspond au segment 1 de l'autre.
+
+       Methode Nombre_de_groupes    Distance Silhouette_moyenne Taille_minimale Taille_maximale
+       K-means                 2 Euclidienne          0.3573135            1119            1121
+ CAH - Ward.D2                 2 Euclidienne          0.3092728             766            1474
+ ARI_vs_Kmeans
+     1.0000000
+     0.4687668
+
+### Tailles des groupes par méthode
+
+       Methode Segment Nombre_clients Pourcentage
+       K-means       1           1121    50.04464
+       K-means       2           1119    49.95536
+ CAH - Ward.D2       1            766    34.19643
+ CAH - Ward.D2       2           1474    65.80357
+
+### Profils des groupes par méthode
+
+       Methode Segment Nombre_clients Age_Client  Income Kidhome Teenhome Recency MntWines
+       K-means       1           1121       42.0 35776.5       1        0      49     24.0
+       K-means       2           1119       47.0 68211.0       0        0      50    491.0
+ CAH - Ward.D2       1            766       45.5 72661.0       0        0      50    531.5
+ CAH - Ward.D2       2           1474       43.0 39910.0       1        1      49     43.0
+ MntFruits MntMeatProducts MntFishProducts MntSweetProducts MntGoldProds NumDealsPurchases
+         2              16               3                2           10                 2
+        32             231              50               33           53                 1
+        47             348              72               48           54                 1
+         3              23               4                3           14                 2
+ NumWebPurchases NumCatalogPurchases NumStorePurchases NumWebVisitsMonth Taux_reponse_pct
+               2                   0                 3                 7         10.61552
+               5                   4                 8                 4         19.21358
+               5                   5                 9                 3         23.23760
+               3                   1                 4                 7         10.58345
+
+La matrice de distances utilisée occupe environ 19.1 Mio en mémoire. La CAH requiert O(n²) en mémoire et en calcul ; ce coût augmente rapidement avec le nombre de clients.
+
 | Segment | Nombre de clients | Pourcentage |
 |---|---:|---:|
 | 1 | 1121 | 50.04 |
@@ -39,6 +84,22 @@ La partition de référence (K = 2) a été comparée à 100 exécutions indépe
                     100   2027 0.9921531    0.008045732    0.983986        0.983986           1
  Partitions_identiques_pct
                         51
+
+### Stabilité par sous-échantillonnage
+
+K-means a été réajusté sur 100 sous-échantillons sans remise contenant 80 % des clients (1792 clients par répétition), avec 50 initialisations par ajustement. Chaque partition a ensuite été appliquée à tous les clients par affectation au centroïde le plus proche, puis comparée à la partition de référence par ARI.
+
+L'imputation, le plafonnement, la standardisation et l'ACP sont maintenus
+fixes. Ce diagnostic mesure donc la sensibilité de K-means à la composition
+de l'échantillon dans l'espace ACP existant ; il ne valide pas toute la
+chaîne de traitement ni la généralisation à une nouvelle population.
+
+ Nombre_repetitions Fraction_clients_pct Taille_sous_echantillon
+                100                   80                    1792
+ Initialisations_kmeans_par_repetition Graine ARI_moyen ARI_ecart_type ARI_minimum ARI_quantile_05
+                                    50   2028 0.9789884     0.01790867   0.9280937       0.9349046
+ ARI_maximum
+           1
 
 ## 3. Profils des segments
 
@@ -136,6 +197,10 @@ ni efficacité future.
 - `figures/segmentation/03_diagnostic_silhouette.png`
 - `figures/segmentation/04_segments_plan_acp.png`
 - `figures/segmentation/05_profils_segments.png`
+- `figures/segmentation/06_comparaison_partitions_kmeans_cah.png`
+- `figures/segmentation/07_comparaison_silhouette_kmeans_cah.png`
+- `figures/segmentation/08_dendrogramme_cah_ward.png`
+- `figures/segmentation/09_kmeans_centroides_silhouette.png`
 
 ## 9. Fichiers de résultats
 
@@ -144,8 +209,13 @@ ni efficacité future.
 - `reports/segmentation/correlations_variables_composantes.csv`
 - `reports/segmentation/interpretation_composantes_acp.csv`
 - `reports/segmentation/recommandations_marketing.csv`
+- `reports/segmentation/comparaison_kmeans_cah.csv`
+- `reports/segmentation/tailles_segments_comparaison.csv`
+- `reports/segmentation/profils_kmeans_cah.csv`
 - `reports/segmentation/resume_stabilite_kmeans.csv`
 - `reports/segmentation/stabilite_kmeans_initialisations.csv`
+- `reports/segmentation/resume_stabilite_sous_echantillonnage.csv`
+- `reports/segmentation/stabilite_sous_echantillonnage.csv`
 - `reports/segmentation/selection_nombre_clusters.csv`
 - `reports/segmentation/diagnostic_silhouette_segments.csv`
 - `reports/segmentation/tailles_segments.csv`
