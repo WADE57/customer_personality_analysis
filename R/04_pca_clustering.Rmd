@@ -8,6 +8,7 @@ output:
     toc_float: true
     number_sections: true
     theme: readable
+    keep_md: true
 ---
 
 ```{r setup, include=FALSE}
