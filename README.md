@@ -39,7 +39,7 @@ numériques, les sept premières composantes principales expliquent **82,81 %**
 de la variance. Le nombre de groupes retenu par silhouette est **K = 2**.
 
 | Indicateur | Résultat observé |
-|---|---:|
+| --- | ---: |
 | Silhouette moyenne K-means | 0,357 (séparation modérée) |
 | Silhouette moyenne Ward.D2 | 0,309 |
 | ARI entre les partitions K-means et Ward | 0,469 |
@@ -112,6 +112,7 @@ Les traitements spécifiques à l'ACP ne modifient pas le CSV préparé.
 Consulter le rapport pour les détails, paramètres et sorties complets.
 
 ## Structure
+
 - `data/raw/` : fichiers originaux, non modifiés (non suivis par Git).
 - `data/processed/` : données préparées (non suivies par Git).
 - `src/` : scripts Python d'inspection, de nettoyage et d'analyse.
@@ -124,6 +125,7 @@ Consulter le rapport pour les détails, paramètres et sorties complets.
 - `docs/` : installation, provenance des données et brouillon de communication.
 
 ## Démarrage
+
 Voir `docs/INSTALLATION.md`.
 
 Le [rapport complet en Markdown](reports/segmentation/pca_segmentation.md)
@@ -155,7 +157,11 @@ la segmentation et le rendu du rapport R. Il s'arrête dès qu'une étape
   méthodologie complète, diagnostics, stabilité, comparaison des méthodes,
   distributions et interprétation métier.
 - Le rapport [HTML](reports/segmentation/pca_segmentation.html) est généré
-  par `./run_all.sh`; télécharger le fichier et l'ouvrir dans un navigateur
+  par
+  \bash
+  `./run_all.sh`
+  \bash
+  ; télécharger le fichier et l'ouvrir dans un navigateur
   pour consulter les figures intégrées.
 - Les tableaux agrégés se trouvent sous `reports/eda/tables/` et
   `reports/segmentation/`. Les exports contenant des lignes individuelles
@@ -187,7 +193,7 @@ définis à l'avance.
 ## État de la validation
 
 | Étape | État |
-|---|---|
+| --- | --- |
 | Inspection, préparation et analyse exploratoire | Réalisées |
 | Diagnostic des variables et ACP | Réalisés |
 | Segmentation K-means et évaluation par silhouette | Réalisées |
