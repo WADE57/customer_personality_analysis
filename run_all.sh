@@ -37,18 +37,22 @@ if [[ ! -f "$project_root/data/raw/marketing_campaign.csv" ]]; then
   exit 1
 fi
 
-echo "Étape 1/4 — Inspection des données brutes"
+echo "Étape 1/5 — Inspection des données brutes"
 "$python" src/01_inspect_data.py
 
-echo "Étape 2/4 — Nettoyage des données"
+echo "Étape 2/5 — Nettoyage des données"
 "$python" src/02_clean_data.py
 
-echo "Étape 3/4 — Analyse exploratoire"
+echo "Étape 3/5 — Analyse exploratoire"
 "$python" src/03_eda.py
 
-echo "Étape 4/4 — Diagnostic, ACP, segmentation et rapport HTML"
+echo "Étape 4/5 — Diagnostic, ACP, segmentation et rapport HTML"
 Rscript -e 'rmarkdown::render("R/04_pca_clustering.Rmd", output_file = "pca_segmentation.html", output_dir = "reports/segmentation")'
+
+echo "Étape 5/5 — Assemblage du rapport général"
+"$python" src/04_build_general_report.py
 
 echo "Pipeline terminé."
 echo "Rapport ACP/segmentation : reports/segmentation/pca_segmentation.html"
 echo "Rapport d'analyse exploratoire : reports/eda/eda_summary.md"
+echo "Rapport général : reports/rapport_general.md"
