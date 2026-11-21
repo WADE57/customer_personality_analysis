@@ -128,10 +128,10 @@ Consulter le rapport pour les détails, paramètres et sorties complets.
 
 Voir `docs/INSTALLATION.md`.
 
-Le [rapport complet en Markdown](reports/segmentation/pca_segmentation.md)
-est consultable directement sur GitHub. Le [rapport HTML](reports/segmentation/pca_segmentation.html)
-est généré localement par le pipeline ; télécharge-le puis ouvre-le dans un
-navigateur pour consulter sa version avec les figures intégrées.
+Le [rapport général en Markdown](reports/rapport_general.md) rassemble
+l'analyse exploratoire et l'ACP/segmentation. Le [rapport HTML de
+segmentation](reports/segmentation/pca_segmentation.html) est également
+généré par le pipeline.
 
 ## Exécuter tout le projet
 
@@ -144,24 +144,21 @@ projet :
 ```
 
 Le script enchaîne l'inspection des données brutes, leur nettoyage,
-l'analyse exploratoire Python, puis le diagnostic des variables, l'ACP,
-la segmentation et le rendu du rapport R. Il s'arrête dès qu'une étape
-échoue. Les principaux rapports sont générés dans `reports/eda/` et
-`reports/segmentation/`.
+l'analyse exploratoire Python, le diagnostic des variables, l'ACP, la
+segmentation et la génération des rapports, dont le rapport général.
+Il s'arrête dès qu'une étape échoue.
 
 ## Rapports et sorties
 
+- [Rapport général](reports/rapport_general.md) : analyse exploratoire,
+  ACP, segmentation, interprétation et figures sélectionnées.
 - [Rapport EDA](reports/eda/eda_summary.md) : qualité des données,
   statistiques descriptives, corrélations et comportement de réponse.
 - [Rapport ACP et segmentation](reports/segmentation/pca_segmentation.md) :
   méthodologie complète, diagnostics, stabilité, comparaison des méthodes,
   distributions et interprétation métier.
 - Le rapport [HTML](reports/segmentation/pca_segmentation.html) est généré
-  par
-  \bash
-  `./run_all.sh`
-  \bash
-  ; télécharger le fichier et l'ouvrir dans un navigateur
+  par `./run_all.sh`; télécharger le fichier et l'ouvrir dans un navigateur
   pour consulter les figures intégrées.
 - Les tableaux agrégés se trouvent sous `reports/eda/tables/` et
   `reports/segmentation/`. Les exports contenant des lignes individuelles
